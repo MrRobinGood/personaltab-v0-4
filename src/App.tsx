@@ -667,6 +667,20 @@ export default function App() {
                   <Upload className="h-4 w-4 mr-2" />
                   Load Backup
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (confirm('This will remove all widgets and reset the app. Are you sure?')) {
+                      localStorage.removeItem('personaltab-widgets');
+                      localStorage.removeItem('personaltab-layouts');
+                      setWidgets([]);
+                      setLayouts({});
+                    }
+                  }}
+                  className="text-destructive"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear All
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
