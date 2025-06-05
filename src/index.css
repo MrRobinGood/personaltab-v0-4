@@ -207,20 +207,20 @@
   }
 }
 
-/* Ensure exact 260px × 350px widget dimensions with drag/drop functionality */
+/* Flexible grid layout that allows resizing and repositioning */
 .react-grid-layout {
-  width: 834px !important; /* 3 × 260px + 2 × 17px */
+  margin: 0 auto;
+  min-width: 834px; /* Initial 3 × 260px + 2 × 17px */
 }
 
+/* Allow grid items to be flexible while maintaining minimum sizes */
 .react-grid-item {
-  width: 260px !important;
-  height: 350px !important;
+  min-width: 200px;
+  min-height: 250px;
 }
 
-/* Maintain grid functionality while forcing exact dimensions */
-@media (min-width: 768px) {
-  .react-grid-item {
-    min-width: 260px !important;
-    min-height: 350px !important;
-  }
+/* Initial default sizing only - can be overridden by user resizing */
+.react-grid-item.initial-size {
+  width: 260px;
+  height: 350px;
 }

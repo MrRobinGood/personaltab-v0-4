@@ -556,22 +556,22 @@ export default function App() {
       ];
       setWidgets(defaultWidgets);
 
-      // Set default layout for the 3 widgets side by side (260px × 350px with 17px gutters)
+      // Set default layout for the 3 widgets side by side (approximately 260px × 350px)
       const defaultLayout = {
         lg: [
-          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 10, minW: 2, minH: 5 }
+          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 10, minW: 2, minH: 7, isResizable: true },
+          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 10, minW: 2, minH: 7, isResizable: true },
+          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 10, minW: 2, minH: 7, isResizable: true }
         ],
         md: [
-          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 10, minW: 2, minH: 5 }
+          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 10, minW: 2, minH: 7, isResizable: true },
+          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 10, minW: 2, minH: 7, isResizable: true },
+          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 10, minW: 2, minH: 7, isResizable: true }
         ],
         sm: [
-          { i: defaultWidgets[0].id, x: 0, y: 0, w: 2, h: 10, minW: 2, minH: 5 },
-          { i: defaultWidgets[1].id, x: 2, y: 0, w: 2, h: 10, minW: 2, minH: 5 },
-          { i: defaultWidgets[2].id, x: 4, y: 0, w: 2, h: 10, minW: 2, minH: 5 }
+          { i: defaultWidgets[0].id, x: 0, y: 0, w: 2, h: 10, minW: 2, minH: 7, isResizable: true },
+          { i: defaultWidgets[1].id, x: 2, y: 0, w: 2, h: 10, minW: 2, minH: 7, isResizable: true },
+          { i: defaultWidgets[2].id, x: 4, y: 0, w: 2, h: 10, minW: 2, minH: 7, isResizable: true }
         ]
       };
       setLayouts(defaultLayout);
@@ -765,22 +765,22 @@ export default function App() {
                       ];
                       setWidgets(defaultWidgets);
 
-                      // Set default layout for the 3 widgets side by side (260px × 350px with 17px gutters)
+                      // Set default layout for the 3 widgets side by side (approximately 260px × 350px)
                       const defaultLayout = {
                         lg: [
-                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-                          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-                          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 10, minW: 2, minH: 5 }
+                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 10, minW: 2, minH: 7, isResizable: true },
+                          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 10, minW: 2, minH: 7, isResizable: true },
+                          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 10, minW: 2, minH: 7, isResizable: true }
                         ],
                         md: [
-                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-                          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 10, minW: 2, minH: 5 },
-                          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 10, minW: 2, minH: 5 }
+                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 10, minW: 2, minH: 7, isResizable: true },
+                          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 10, minW: 2, minH: 7, isResizable: true },
+                          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 10, minW: 2, minH: 7, isResizable: true }
                         ],
                         sm: [
-                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 2, h: 10, minW: 2, minH: 5 },
-                          { i: defaultWidgets[1].id, x: 2, y: 0, w: 2, h: 10, minW: 2, minH: 5 },
-                          { i: defaultWidgets[2].id, x: 4, y: 0, w: 2, h: 10, minW: 2, minH: 5 }
+                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 2, h: 10, minW: 2, minH: 7, isResizable: true },
+                          { i: defaultWidgets[1].id, x: 2, y: 0, w: 2, h: 10, minW: 2, minH: 7, isResizable: true },
+                          { i: defaultWidgets[2].id, x: 4, y: 0, w: 2, h: 10, minW: 2, minH: 7, isResizable: true }
                         ]
                       };
                       setLayouts(defaultLayout);
@@ -812,13 +812,14 @@ export default function App() {
             layouts={layouts}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 9, md: 9, sm: 6, xs: 4, xxs: 2 }}
+            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
             rowHeight={35}
             margin={[17, 17]}
-            containerPadding={[0, 17]}
+            containerPadding={[17, 17]}
             draggableHandle=".drag-handle"
             resizeHandles={['se']}
-            width={834}
+            isResizable={true}
+            isDraggable={true}
           >
             {widgets.map((widget) => (
               <div key={widget.id}>
