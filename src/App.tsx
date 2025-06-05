@@ -559,9 +559,19 @@ export default function App() {
       // Set default layout for the 3 widgets side by side
       const defaultLayout = {
         lg: [
-          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 6 },
-          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 6 },
-          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 6 }
+          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 6, minW: 2, minH: 3 },
+          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 6, minW: 2, minH: 3 },
+          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 6, minW: 2, minH: 3 }
+        ],
+        md: [
+          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
+          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
+          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 6, minW: 2, minH: 3 }
+        ],
+        sm: [
+          { i: defaultWidgets[0].id, x: 0, y: 0, w: 2, h: 6, minW: 2, minH: 3 },
+          { i: defaultWidgets[1].id, x: 2, y: 0, w: 2, h: 6, minW: 2, minH: 3 },
+          { i: defaultWidgets[2].id, x: 4, y: 0, w: 2, h: 6, minW: 2, minH: 3 }
         ]
       };
       setLayouts(defaultLayout);
@@ -758,9 +768,19 @@ export default function App() {
                       // Set default layout for the 3 widgets side by side
                       const defaultLayout = {
                         lg: [
-                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 6 },
-                          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 6 },
-                          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 6 }
+                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 6, minW: 2, minH: 3 },
+                          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 6, minW: 2, minH: 3 },
+                          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 6, minW: 2, minH: 3 }
+                        ],
+                        md: [
+                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
+                          { i: defaultWidgets[1].id, x: 3, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
+                          { i: defaultWidgets[2].id, x: 6, y: 0, w: 3, h: 6, minW: 2, minH: 3 }
+                        ],
+                        sm: [
+                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 2, h: 6, minW: 2, minH: 3 },
+                          { i: defaultWidgets[1].id, x: 2, y: 0, w: 2, h: 6, minW: 2, minH: 3 },
+                          { i: defaultWidgets[2].id, x: 4, y: 0, w: 2, h: 6, minW: 2, minH: 3 }
                         ]
                       };
                       setLayouts(defaultLayout);
@@ -798,22 +818,16 @@ export default function App() {
           draggableHandle=".drag-handle"
           resizeHandles={['se']}
         >
-          {widgets.map((widget, index) => {
-            // Use layout data if available, otherwise default positioning
-            const layout = layouts.lg?.find(l => l.i === widget.id) ||
-                          { w: 4, h: 6, x: (index % 3) * 4, y: 0, minW: 2, minH: 3 };
-
-            return (
-              <div key={widget.id} data-grid={layout}>
-                <WidgetCard
-                  widget={widget}
-                  onUpdate={updateWidget}
-                  onUpdateTitle={updateWidgetTitle}
-                  onDelete={deleteWidget}
-                />
-              </div>
-            );
-          })}
+          {widgets.map((widget) => (
+            <div key={widget.id}>
+              <WidgetCard
+                widget={widget}
+                onUpdate={updateWidget}
+                onUpdateTitle={updateWidgetTitle}
+                onDelete={deleteWidget}
+              />
+            </div>
+          ))}
         </ResponsiveReactGridLayout>
       </main>
     </div>
