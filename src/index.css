@@ -207,25 +207,4 @@
   }
 }
 
-/* Force exact 3-widget layout with precise positioning */
-.react-grid-layout {
-  width: 834px !important; /* 3 × 260px + 2 × 17px */
-}
-
-@media (min-width: 768px) {
-  /* Ensure 3 widgets per row with exact positioning */
-  .react-grid-item:nth-child(1) {
-    left: 0px !important;
-    top: 17px !important;
-  }
-
-  .react-grid-item:nth-child(2) {
-    left: 277px !important; /* 260px + 17px */
-    top: 17px !important;
-  }
-
-  .react-grid-item:nth-child(3) {
-    left: 554px !important; /* 260px + 17px + 260px + 17px */
-    top: 17px !important; /* Force to first row */
-  }
-}
+/* Clean flexbox layout for initial 3-widget state */

@@ -805,31 +805,49 @@ export default function App() {
         onChange={loadBackup}
       />
 
-      <main className="container mx-auto px-4 py-6">
-        <ResponsiveReactGridLayout
-          className="layout"
-          layouts={layouts}
-          onLayoutChange={onLayoutChange}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 9, md: 9, sm: 6, xs: 4, xxs: 2 }}
-          rowHeight={35}
-          margin={[17, 17]}
-          containerPadding={[0, 17]}
-          draggableHandle=".drag-handle"
-          resizeHandles={['se']}
-          width={848}
-        >
-          {widgets.map((widget) => (
-            <div key={widget.id}>
-              <WidgetCard
-                widget={widget}
-                onUpdate={updateWidget}
-                onUpdateTitle={updateWidgetTitle}
-                onDelete={deleteWidget}
-              />
-            </div>
-          ))}
-        </ResponsiveReactGridLayout>
+      <main className="px-4 py-6">
+        {widgets.length === 3 && widgets.every(w => ['notes', 'todos', 'links'].includes(w.type)) ? (
+          // Special layout for the initial 3 widgets - simple flexbox
+          <div className="flex justify-center gap-[17px] mx-auto" style={{ width: '834px' }}>
+            {widgets.map((widget) => (
+              <div key={widget.id} className="w-[260px] h-[350px]">
+                <WidgetCard
+                  widget={widget}
+                  onUpdate={updateWidget}
+                  onUpdateTitle={updateWidgetTitle}
+                  onDelete={deleteWidget}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Use grid layout for other configurations
+          <div className="container mx-auto">
+            <ResponsiveReactGridLayout
+              className="layout"
+              layouts={layouts}
+              onLayoutChange={onLayoutChange}
+              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+              cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+              rowHeight={35}
+              margin={[17, 17]}
+              containerPadding={[0, 17]}
+              draggableHandle=".drag-handle"
+              resizeHandles={['se']}
+            >
+              {widgets.map((widget) => (
+                <div key={widget.id}>
+                  <WidgetCard
+                    widget={widget}
+                    onUpdate={updateWidget}
+                    onUpdateTitle={updateWidgetTitle}
+                    onDelete={deleteWidget}
+                  />
+                </div>
+              ))}
+            </ResponsiveReactGridLayout>
+          </div>
+        )}
       </main>
     </div>
   );
