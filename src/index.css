@@ -136,6 +136,29 @@
   min-height: 400px;
 }
 
+/* Ensure exact widget dimensions: 260px × 350px with 17px gutters */
+.react-grid-item {
+  box-sizing: border-box;
+}
+
+.react-grid-layout {
+  margin: 0 auto;
+  max-width: 848px; /* 3 × 260px + 4 × 17px */
+}
+
+/* Force widget dimensions for 3-column layout */
+@media (min-width: 768px) {
+  .react-grid-item {
+    width: 260px !important;
+    min-width: 260px !important;
+  }
+
+  .react-grid-item.react-grid-item {
+    height: 350px !important;
+    min-height: 350px !important;
+  }
+}
+
 /* Utility classes */
 .line-clamp-2 {
   display: -webkit-box;
