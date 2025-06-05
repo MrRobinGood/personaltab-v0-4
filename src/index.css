@@ -207,4 +207,20 @@
   }
 }
 
-/* Clean flexbox layout for initial 3-widget state */
+/* Ensure exact 260px × 350px widget dimensions with drag/drop functionality */
+.react-grid-layout {
+  width: 834px !important; /* 3 × 260px + 2 × 17px */
+}
+
+.react-grid-item {
+  width: 260px !important;
+  height: 350px !important;
+}
+
+/* Maintain grid functionality while forcing exact dimensions */
+@media (min-width: 768px) {
+  .react-grid-item {
+    min-width: 260px !important;
+    min-height: 350px !important;
+  }
+}
