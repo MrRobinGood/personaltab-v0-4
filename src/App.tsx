@@ -523,6 +523,7 @@ export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [layouts, setLayouts] = useState<{ [key: string]: Layout[] }>({});
   const [mainTitle, setMainTitle] = useState('PersonalTab');
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -531,7 +532,31 @@ export default function App() {
 
     if (savedWidgets) {
       setWidgets(JSON.parse(savedWidgets));
+    } else {
+      // Create initial default widgets
+      const defaultWidgets: Widget[] = [
+        {
+          id: generateId(),
+          type: 'notes',
+          title: 'Notes',
+          data: {}
+        },
+        {
+          id: generateId(),
+          type: 'todos',
+          title: 'Todo List',
+          data: {}
+        },
+        {
+          id: generateId(),
+          type: 'links',
+          title: 'Quick Links',
+          data: {}
+        }
+      ];
+      setWidgets(defaultWidgets);
     }
+
     if (savedLayouts) {
       setLayouts(JSON.parse(savedLayouts));
     }
@@ -630,27 +655,52 @@ export default function App() {
           />
 
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="left">
-                <DropdownMenuItem onClick={() => addWidget('notes')}>
-                  📝 Notes
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addWidget('links')}>
-                  🔗 Links
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addWidget('todos')}>
-                  ✅ Todos
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addWidget('rss')}>
-                  📰 RSS
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div
+              className="relative"
+              onMouseEnter={() => setShowAddMenu(true)}
+              onMouseLeave={() => setShowAddMenu(false)}
+            >
+              <Button variant="outline" size="icon">
+                <Plus className="h-4 w-4" />
+              </Button>
+
+              {showAddMenu && (
+                <div className="absolute right-full top-0 mr-2 bg-background border rounded-lg shadow-lg px-2 py-1 flex items-center gap-1 z-50">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => addWidget('notes')}
+                  >
+                    📝 Notes
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => addWidget('todos')}
+                  >
+                    ✅ Todos
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => addWidget('links')}
+                  >
+                    🔗 Links
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => addWidget('rss')}
+                  >
+                    📰 RSS
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -696,55 +746,29 @@ export default function App() {
       />
 
       <main className="container mx-auto px-4 py-6">
-        {widgets.length === 0 ? (
-          <div className="flex justify-center gap-4 py-12">
-            <div className="w-[280px] h-[250px] border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors" onClick={() => addWidget('notes')}>
-              <div className="text-center">
-                <div className="text-4xl mb-2">📝</div>
-                <div className="font-medium">Notes</div>
-                <div className="text-sm text-muted-foreground">Click to add</div>
-              </div>
+        <ResponsiveReactGridLayout
+          className="layout"
+          layouts={layouts}
+          onLayoutChange={onLayoutChange}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={60}
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
+          draggableHandle=".drag-handle"
+          resizeHandles={['se']}
+        >
+          {widgets.map((widget) => (
+            <div key={widget.id} data-grid={{ w: 4, h: 6, x: 0, y: 0, minW: 2, minH: 3, isResizable: true }}>
+              <WidgetCard
+                widget={widget}
+                onUpdate={updateWidget}
+                onUpdateTitle={updateWidgetTitle}
+                onDelete={deleteWidget}
+              />
             </div>
-            <div className="w-[280px] h-[250px] border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors" onClick={() => addWidget('todos')}>
-              <div className="text-center">
-                <div className="text-4xl mb-2">✅</div>
-                <div className="font-medium">Todos</div>
-                <div className="text-sm text-muted-foreground">Click to add</div>
-              </div>
-            </div>
-            <div className="w-[280px] h-[250px] border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors" onClick={() => addWidget('links')}>
-              <div className="text-center">
-                <div className="text-4xl mb-2">🔗</div>
-                <div className="font-medium">Links</div>
-                <div className="text-sm text-muted-foreground">Click to add</div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <ResponsiveReactGridLayout
-            className="layout"
-            layouts={layouts}
-            onLayoutChange={onLayoutChange}
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-            rowHeight={60}
-            margin={[16, 16]}
-            containerPadding={[0, 0]}
-            draggableHandle=".drag-handle"
-            resizeHandles={['se']}
-          >
-            {widgets.map((widget) => (
-              <div key={widget.id} data-grid={{ w: 4, h: 6, x: 0, y: 0, minW: 2, minH: 3, isResizable: true }}>
-                <WidgetCard
-                  widget={widget}
-                  onUpdate={updateWidget}
-                  onUpdateTitle={updateWidgetTitle}
-                  onDelete={deleteWidget}
-                />
-              </div>
-            ))}
-          </ResponsiveReactGridLayout>
-        )}
+          ))}
+        </ResponsiveReactGridLayout>
       </main>
     </div>
   );
