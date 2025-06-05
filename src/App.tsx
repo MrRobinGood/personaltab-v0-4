@@ -555,6 +555,16 @@ export default function App() {
         }
       ];
       setWidgets(defaultWidgets);
+
+      // Set default layout for the 3 widgets side by side
+      const defaultLayout = {
+        lg: [
+          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 6 },
+          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 6 },
+          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 6 }
+        ]
+      };
+      setLayouts(defaultLayout);
     }
 
     if (savedLayouts) {
@@ -744,7 +754,16 @@ export default function App() {
                         }
                       ];
                       setWidgets(defaultWidgets);
-                      setLayouts({});
+
+                      // Set default layout for the 3 widgets side by side
+                      const defaultLayout = {
+                        lg: [
+                          { i: defaultWidgets[0].id, x: 0, y: 0, w: 4, h: 6 },
+                          { i: defaultWidgets[1].id, x: 4, y: 0, w: 4, h: 6 },
+                          { i: defaultWidgets[2].id, x: 8, y: 0, w: 4, h: 6 }
+                        ]
+                      };
+                      setLayouts(defaultLayout);
                     }
                   }}
                   className="text-destructive"
@@ -773,22 +792,28 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-          rowHeight={60}
+          rowHeight={42}
           margin={[16, 16]}
           containerPadding={[0, 0]}
           draggableHandle=".drag-handle"
           resizeHandles={['se']}
         >
-          {widgets.map((widget) => (
-            <div key={widget.id} data-grid={{ w: 4, h: 6, x: 0, y: 0, minW: 2, minH: 3, isResizable: true }}>
-              <WidgetCard
-                widget={widget}
-                onUpdate={updateWidget}
-                onUpdateTitle={updateWidgetTitle}
-                onDelete={deleteWidget}
-              />
-            </div>
-          ))}
+          {widgets.map((widget, index) => {
+            // Use layout data if available, otherwise default positioning
+            const layout = layouts.lg?.find(l => l.i === widget.id) ||
+                          { w: 4, h: 6, x: (index % 3) * 4, y: 0, minW: 2, minH: 3 };
+
+            return (
+              <div key={widget.id} data-grid={layout}>
+                <WidgetCard
+                  widget={widget}
+                  onUpdate={updateWidget}
+                  onUpdateTitle={updateWidgetTitle}
+                  onDelete={deleteWidget}
+                />
+              </div>
+            );
+          })}
         </ResponsiveReactGridLayout>
       </main>
     </div>
