@@ -417,7 +417,7 @@ const RSSWidget: React.FC<{ widget: Widget; onUpdate: (data: RSSData) => void }>
   );
 };
 
-const EditableTitle: React.FC<{ title: string; onSave: (newTitle: string) => void }> = ({ title, onSave }) => {
+const EditableTitle: React.FC<{ title: string; onSave: (newTitle: string) => void; isMainTitle?: boolean }> = ({ title, onSave, isMainTitle = false }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
 
@@ -456,10 +456,16 @@ const EditableTitle: React.FC<{ title: string; onSave: (newTitle: string) => voi
 
   return (
     <div className="flex items-center gap-2 group">
-      <CardTitle className="text-sm cursor-pointer" onClick={() => setIsEditing(true)}>
-        {title}
-      </CardTitle>
-      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 cursor-pointer" onClick={() => setIsEditing(true)} />
+      {isMainTitle ? (
+        <h1 className="text-xl font-bold cursor-pointer" onClick={() => setIsEditing(true)}>
+          {title}
+        </h1>
+      ) : (
+        <CardTitle className="text-sm cursor-pointer" onClick={() => setIsEditing(true)}>
+          {title}
+        </CardTitle>
+      )}
+      <Edit2 className={`${isMainTitle ? 'h-4 w-4' : 'h-3 w-3'} opacity-0 group-hover:opacity-50 cursor-pointer`} onClick={() => setIsEditing(true)} />
     </div>
   );
 };
@@ -516,6 +522,7 @@ const WidgetCard: React.FC<{
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [layouts, setLayouts] = useState<{ [key: string]: Layout[] }>({});
+  const [mainTitle, setMainTitle] = useState('PersonalTab');
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -616,35 +623,34 @@ export default function App() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold">PersonalTab</h1>
+          <EditableTitle
+            title={mainTitle}
+            onSave={(newTitle) => setMainTitle(newTitle)}
+            isMainTitle={true}
+          />
 
           <div className="flex items-center gap-2">
-            <Dialog>
-              <DialogTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
                   <Plus className="h-4 w-4" />
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Widget</DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  <Button variant="outline" onClick={() => addWidget('notes')}>
-                    📝 Notes
-                  </Button>
-                  <Button variant="outline" onClick={() => addWidget('links')}>
-                    🔗 Links
-                  </Button>
-                  <Button variant="outline" onClick={() => addWidget('todos')}>
-                    ✅ Todos
-                  </Button>
-                  <Button variant="outline" onClick={() => addWidget('rss')}>
-                    📰 RSS
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="left">
+                <DropdownMenuItem onClick={() => addWidget('notes')}>
+                  📝 Notes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addWidget('links')}>
+                  🔗 Links
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addWidget('todos')}>
+                  ✅ Todos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addWidget('rss')}>
+                  📰 RSS
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -677,15 +683,27 @@ export default function App() {
 
       <main className="container mx-auto px-4 py-6">
         {widgets.length === 0 ? (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold mb-4">Welcome to PersonalTab!</h2>
-            <p className="text-muted-foreground mb-6">
-              Get started by adding your first widget. Click the + button above.
-            </p>
-            <div className="flex justify-center gap-4">
-              <Button onClick={() => addWidget('notes')}>📝 Add Notes</Button>
-              <Button onClick={() => addWidget('todos')}>✅ Add Todos</Button>
-              <Button onClick={() => addWidget('links')}>🔗 Add Links</Button>
+          <div className="flex justify-center gap-4 py-12">
+            <div className="w-[280px] h-[250px] border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors" onClick={() => addWidget('notes')}>
+              <div className="text-center">
+                <div className="text-4xl mb-2">📝</div>
+                <div className="font-medium">Notes</div>
+                <div className="text-sm text-muted-foreground">Click to add</div>
+              </div>
+            </div>
+            <div className="w-[280px] h-[250px] border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors" onClick={() => addWidget('todos')}>
+              <div className="text-center">
+                <div className="text-4xl mb-2">✅</div>
+                <div className="font-medium">Todos</div>
+                <div className="text-sm text-muted-foreground">Click to add</div>
+              </div>
+            </div>
+            <div className="w-[280px] h-[250px] border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors" onClick={() => addWidget('links')}>
+              <div className="text-center">
+                <div className="text-4xl mb-2">🔗</div>
+                <div className="font-medium">Links</div>
+                <div className="text-sm text-muted-foreground">Click to add</div>
+              </div>
             </div>
           </div>
         ) : (
@@ -702,7 +720,7 @@ export default function App() {
             resizeHandles={['se']}
           >
             {widgets.map((widget) => (
-              <div key={widget.id} data-grid={{ w: 4, h: 6, x: 0, y: 0, minW: 2, minH: 3 }}>
+              <div key={widget.id} data-grid={{ w: 4, h: 6, x: 0, y: 0, minW: 2, minH: 3, isResizable: true }}>
                 <WidgetCard
                   widget={widget}
                   onUpdate={updateWidget}
