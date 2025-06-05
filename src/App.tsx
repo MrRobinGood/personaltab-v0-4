@@ -719,17 +719,38 @@ export default function App() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    if (confirm('This will remove all widgets and reset the app. Are you sure?')) {
+                    if (confirm('This will reset to the default 3 widgets. Are you sure?')) {
                       localStorage.removeItem('personaltab-widgets');
                       localStorage.removeItem('personaltab-layouts');
-                      setWidgets([]);
+                      // Create default widgets
+                      const defaultWidgets: Widget[] = [
+                        {
+                          id: generateId(),
+                          type: 'notes',
+                          title: 'Notes',
+                          data: {}
+                        },
+                        {
+                          id: generateId(),
+                          type: 'todos',
+                          title: 'Todo List',
+                          data: {}
+                        },
+                        {
+                          id: generateId(),
+                          type: 'links',
+                          title: 'Quick Links',
+                          data: {}
+                        }
+                      ];
+                      setWidgets(defaultWidgets);
                       setLayouts({});
                     }
                   }}
                   className="text-destructive"
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Clear All
+                  Reset to Default
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
