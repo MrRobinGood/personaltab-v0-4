@@ -811,13 +811,13 @@ export default function App() {
           layouts={layouts}
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          cols={{ lg: 9, md: 9, sm: 6, xs: 4, xxs: 2 }}
           rowHeight={35}
           margin={[17, 17]}
-          containerPadding={[17, 17]}
+          containerPadding={[0, 17]}
           draggableHandle=".drag-handle"
           resizeHandles={['se']}
-          width={1200}
+          width={848}
         >
           {widgets.map((widget) => (
             <div key={widget.id}>
