@@ -36,6 +36,7 @@ interface TodoItem {
   id: string;
   text: string;
   completed: boolean;
+  color: 'black' | 'dark-gray' | 'light-gray' | 'white';
 }
 
 interface RSSItem {
@@ -171,6 +172,44 @@ export default function App() {
     }
   }, [widgets, nextId, maxZIndex]);
 
+  // Check if two rectangles overlap
+  const rectanglesOverlap = (rect1: any, rect2: any) => {
+    return !(rect1.x + rect1.width <= rect2.x || 
+             rect2.x + rect2.width <= rect1.x || 
+             rect1.y + rect1.height <= rect2.y || 
+             rect2.y + rect2.height <= rect1.y);
+  };
+
+  // Find a safe position for a widget that doesn't overlap with others
+  const findSafePosition = (targetWidget: Widget, newX: number, newY: number, newWidth?: number, newHeight?: number) => {
+    const testRect = {
+      x: newX,
+      y: newY,
+      width: newWidth || targetWidget.width,
+      height: newHeight || targetWidget.height
+    };
+
+    // Check for overlaps with other widgets
+    const overlappingWidgets = widgets.filter(w => 
+      w.id !== targetWidget.id && rectanglesOverlap(testRect, w)
+    );
+
+    if (overlappingWidgets.length === 0) {
+      return { x: newX, y: newY };
+    }
+
+    // If there are overlaps, push overlapping widgets down
+    const pushDistance = testRect.y + testRect.height + WIDGET_MARGIN;
+    
+    overlappingWidgets.forEach(widget => {
+      if (widget.y < pushDistance) {
+        updateWidget(widget.id, { y: pushDistance });
+      }
+    });
+
+    return { x: newX, y: newY };
+  };
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragState.isDragging && !dragState.isResizing) return;
@@ -182,17 +221,31 @@ export default function App() {
         const deltaX = e.clientX - dragState.startX;
         const deltaY = e.clientY - dragState.startY;
 
+        const newX = Math.max(0, dragState.initialX + deltaX);
+        const newY = Math.max(0, dragState.initialY + deltaY);
+
+        // Use smart positioning to avoid overlaps
+        const safePosition = findSafePosition(widget, newX, newY);
+        
         updateWidget(dragState.widgetId!, {
-          x: Math.max(0, dragState.initialX + deltaX),
-          y: Math.max(0, dragState.initialY + deltaY)
+          x: safePosition.x,
+          y: safePosition.y
         });
       } else if (dragState.isResizing) {
         const deltaX = e.clientX - dragState.startX;
         const deltaY = e.clientY - dragState.startY;
 
+        const newWidth = Math.max(200, dragState.startWidth + deltaX);
+        const newHeight = Math.max(150, dragState.startHeight + deltaY);
+
+        // Use smart positioning for resizing too
+        const safePosition = findSafePosition(widget, widget.x, widget.y, newWidth, newHeight);
+
         updateWidget(dragState.widgetId!, {
-          width: Math.max(200, dragState.startWidth + deltaX),
-          height: Math.max(150, dragState.startHeight + deltaY)
+          width: newWidth,
+          height: newHeight,
+          x: safePosition.x,
+          y: safePosition.y
         });
       }
     };
@@ -614,7 +667,12 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
 
   const addTodo = () => {
     if (!newTodo.trim()) return;
-    const updated = [...todos, { id: String(Date.now()), text: newTodo.trim(), completed: false }];
+    const updated = [...todos, { 
+      id: String(Date.now()), 
+      text: newTodo.trim(), 
+      completed: false,
+      color: 'black' as const
+    }];
     setTodos(updated);
     onUpdate(widget.id, { content: { todos: updated } });
     setNewTodo('');
@@ -632,20 +690,52 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
     onUpdate(widget.id, { content: { todos: updated } });
   };
 
+  const cycleColor = (id: string) => {
+    const colorCycle: TodoItem['color'][] = ['black', 'dark-gray', 'light-gray', 'white'];
+    const updated = todos.map(t => {
+      if (t.id === id) {
+        const currentIndex = colorCycle.indexOf(t.color);
+        const nextIndex = (currentIndex + 1) % colorCycle.length;
+        return { ...t, color: colorCycle[nextIndex] };
+      }
+      return t;
+    });
+    setTodos(updated);
+    onUpdate(widget.id, { content: { todos: updated } });
+  };
+
+  const getColorClasses = (color: TodoItem['color'], completed: boolean) => {
+    const baseClasses = "text-sm flex-1 cursor-pointer select-none";
+    const completedClass = completed ? 'line-through opacity-60' : '';
+    
+    switch (color) {
+      case 'black':
+        return `${baseClasses} text-black ${completedClass}`;
+      case 'dark-gray':
+        return `${baseClasses} text-gray-600 ${completedClass}`;
+      case 'light-gray':
+        return `${baseClasses} text-gray-400 ${completedClass}`;
+      case 'white':
+        return `${baseClasses} text-white bg-gray-800 px-2 py-1 rounded ${completedClass}`;
+      default:
+        return `${baseClasses} text-black ${completedClass}`;
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Add input at the top */}
       <div className="flex items-center gap-2 mb-3">
-        <Plus className="w-4 h-4 text-gray-400" />
         <Input
           value={newTodo}
           onChange={(e) => setNewTodo(e.target.value)}
           placeholder="Add item..."
-          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 flex-1"
           onKeyDown={(e) => {
             if (e.key === 'Enter') addTodo();
           }}
         />
+        <Plus className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={addTodo} />
       </div>
 
       {/* Todo list */}
@@ -658,7 +748,11 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
               onChange={() => toggleTodo(todo.id)}
               className="w-4 h-4"
             />
-            <span className={`text-sm flex-1 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
+            <span 
+              className={getColorClasses(todo.color, todo.completed)}
+              onClick={() => cycleColor(todo.id)}
+              title="Click to change color"
+            >
               {todo.text}
             </span>
             <Button
@@ -710,16 +804,16 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
     <div className="h-full flex flex-col">
       {/* Add input at the top */}
       <div className="flex items-center gap-2 mb-3">
-        <Plus className="w-4 h-4 text-gray-400" />
         <Input
           value={newUrl}
           onChange={(e) => setNewUrl(e.target.value)}
           placeholder="Add URL..."
-          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 flex-1"
           onKeyDown={(e) => {
             if (e.key === 'Enter') addLink();
           }}
         />
+        <Plus className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={addLink} />
       </div>
 
       {/* Links list */}
@@ -812,12 +906,11 @@ function RSSWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string
     <div className="h-full flex flex-col">
       {/* RSS URL input */}
       <div className="flex items-center gap-2 mb-3">
-        <Plus className="w-4 h-4 text-gray-400" />
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="RSS feed URL..."
-          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 flex-1"
           onKeyDown={(e) => {
             if (e.key === 'Enter') fetchRSSFeed();
           }}
