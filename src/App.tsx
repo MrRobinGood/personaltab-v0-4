@@ -81,6 +81,7 @@ export default function App() {
   });
   const [maxZIndex, setMaxZIndex] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const initializeDefaultWidgets = () => {
     const defaultWidgets: Widget[] = [
@@ -289,6 +290,7 @@ export default function App() {
     setWidgets([...widgets, newWidget]);
     setNextId(nextId + 1);
     setMaxZIndex(newZIndex);
+    setShowAddMenu(false);
   };
 
   const removeWidget = (id: string) => {
@@ -327,6 +329,19 @@ export default function App() {
     });
   };
 
+  const handleMenuMouseEnter = () => {
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current);
+    }
+    setShowAddMenu(true);
+  };
+
+  const handleMenuMouseLeave = () => {
+    menuTimeoutRef.current = setTimeout(() => {
+      setShowAddMenu(false);
+    }, 150);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
@@ -340,56 +355,44 @@ export default function App() {
 
           <div
             className="relative"
-            onMouseEnter={() => setShowAddMenu(true)}
-            onMouseLeave={() => setShowAddMenu(false)}
+            onMouseEnter={handleMenuMouseEnter}
+            onMouseLeave={handleMenuMouseLeave}
           >
             <Button variant="outline" size="sm" className="w-9 h-9 p-0">
               <Plus className="w-4 h-4" />
             </Button>
 
             {showAddMenu && (
-              <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50">
+              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg p-1 flex flex-col gap-1 z-50 min-w-[120px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap"
-                  onClick={() => {
-                    addWidget('notes');
-                    setShowAddMenu(false);
-                  }}
+                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  onClick={() => addWidget('notes')}
                 >
                   Notes
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap"
-                  onClick={() => {
-                    addWidget('todo');
-                    setShowAddMenu(false);
-                  }}
+                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  onClick={() => addWidget('todo')}
                 >
                   List
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap"
-                  onClick={() => {
-                    addWidget('links');
-                    setShowAddMenu(false);
-                  }}
+                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  onClick={() => addWidget('links')}
                 >
                   Links
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap"
-                  onClick={() => {
-                    addWidget('rss');
-                    setShowAddMenu(false);
-                  }}
+                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  onClick={() => addWidget('rss')}
                 >
                   RSS Feed
                 </Button>
