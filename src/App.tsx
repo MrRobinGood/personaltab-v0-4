@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Menu, GripVertical, X, ExternalLink, Download, Upload, Check, MoreHorizontal, Calendar, Clock } from "lucide-react";
+import { Plus, Menu, GripVertical, X, ExternalLink, Download, Upload, Check, MoreHorizontal, Calendar, Clock, Bold, Italic } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,7 @@ export default function App() {
         id: '1',
         type: 'notes',
         title: 'Notes',
-        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.' },
+        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.\n\nUse **Ctrl+B** for bold and **Ctrl+I** for italic!' },
         x: 60,
         y: 30,
         width: 310,
@@ -363,38 +363,38 @@ export default function App() {
             </Button>
 
             {showAddMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg p-1 flex flex-col gap-1 z-50 min-w-[120px]">
+              <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('notes')}
                 >
-                  Notes
+                  📝 Notes
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('todo')}
                 >
-                  List
+                  ✅ List
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('links')}
                 >
-                  Links
+                  🔗 Links
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap justify-start"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('rss')}
                 >
-                  RSS Feed
+                  📡 RSS Feed
                 </Button>
               </div>
             )}
@@ -537,6 +537,7 @@ function WidgetCard({
 
 function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string, updates: Partial<Widget>) => void }) {
   const [text, setText] = useState(widget.content.text || '');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => setText(widget.content.text || ''), [widget.content.text]);
 
@@ -545,13 +546,72 @@ function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
     onUpdate(widget.id, { content: { text: newText } });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const isCtrl = e.ctrlKey || e.metaKey; // Support both Ctrl (Windows) and Cmd (Mac)
+
+    if (isCtrl && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      insertFormatting('**', '**', 'bold text');
+    } else if (isCtrl && (e.key === 'i' || e.key === 'I')) {
+      e.preventDefault();
+      insertFormatting('*', '*', 'italic text');
+    }
+  };
+
+  const insertFormatting = (startTag: string, endTag: string, placeholder: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = text.substring(start, end);
+    
+    let newText: string;
+    let newCursorPos: number;
+
+    if (selectedText) {
+      // If text is selected, wrap it with formatting
+      newText = text.substring(0, start) + startTag + selectedText + endTag + text.substring(end);
+      newCursorPos = end + startTag.length + endTag.length;
+    } else {
+      // If no text selected, insert placeholder with formatting
+      newText = text.substring(0, start) + startTag + placeholder + endTag + text.substring(end);
+      newCursorPos = start + startTag.length + placeholder.length;
+    }
+
+    setText(newText);
+    onUpdate(widget.id, { content: { text: newText } });
+
+    // Set cursor position after state update
+    setTimeout(() => {
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
   return (
-    <Textarea
-      value={text}
-      onChange={(e) => handleChange(e.target.value)}
-      placeholder="Start typing your notes..."
-      className="h-full resize-none border-0 bg-transparent focus:ring-0 text-sm"
-    />
+    <div className="h-full flex flex-col">
+      <div className="flex items-center gap-1 mb-2 text-xs text-gray-500">
+        <Bold className="w-3 h-3" />
+        <span>Ctrl+B</span>
+        <span className="mx-1">•</span>
+        <Italic className="w-3 h-3" />
+        <span>Ctrl+I</span>
+      </div>
+      <Textarea
+        ref={textareaRef}
+        value={text}
+        onChange={(e) => handleChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Start typing your notes... Use Ctrl+B for **bold** and Ctrl+I for *italic*"
+        className="flex-1 resize-none border-0 bg-transparent focus:ring-0 text-sm"
+      />
+    </div>
   );
 }
 
