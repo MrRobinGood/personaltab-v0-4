@@ -48,7 +48,6 @@ interface RSSItem {
 }
 
 const STORAGE_KEY = 'personaltab-data';
-const GRID_SIZE = 20; // Grid snap size
 const WIDGET_WIDTH = 310;
 const WIDGET_HEIGHT = 400;
 const WIDGET_MARGIN = 20;
@@ -81,8 +80,6 @@ export default function App() {
     initialY: 0
   });
   const [maxZIndex, setMaxZIndex] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const initializeDefaultWidgets = () => {
     const defaultWidgets: Widget[] = [
@@ -125,41 +122,20 @@ export default function App() {
     setMaxZIndex(1);
   };
 
-  const forceReset = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    initializeDefaultWidgets();
-  };
-
   useEffect(() => {
-    // Force reset on first load to clear any cached bad data
-    const shouldForceReset = true; // Set to true to force fresh start
-
-    if (shouldForceReset) {
-      forceReset();
-      return;
-    }
-
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        if (data.widgets && data.widgets.length === 3) {
-          const convertedWidgets = data.widgets.map((w: any) => ({
-            ...w,
-            x: w.x || 50,
-            y: w.y || 80,
-            width: w.width || 280,
-            height: w.height || 300,
-            zIndex: w.zIndex || 1
-          }));
-          setWidgets(convertedWidgets);
+        if (data.widgets && Array.isArray(data.widgets)) {
+          setWidgets(data.widgets);
           setNextId(data.nextId || 4);
           setMaxZIndex(data.maxZIndex || 1);
         } else {
-          forceReset();
+          initializeDefaultWidgets();
         }
       } catch (error) {
-        forceReset();
+        initializeDefaultWidgets();
       }
     } else {
       initializeDefaultWidgets();
@@ -181,7 +157,10 @@ export default function App() {
   };
 
   // Handle collision detection and repositioning
-  const handleCollisions = (movingWidget: Widget, newX: number, newY: number, newWidth?: number, newHeight?: number) => {
+  const handleCollisions = (movingWidgetId: string, newX: number, newY: number, newWidth?: number, newHeight?: number) => {
+    const movingWidget = widgets.find(w => w.id === movingWidgetId);
+    if (!movingWidget) return;
+
     const movingRect = {
       x: newX,
       y: newY,
@@ -191,7 +170,7 @@ export default function App() {
 
     // Find all widgets that would overlap with the moving widget
     const overlappingWidgets = widgets.filter(w => 
-      w.id !== movingWidget.id && rectanglesOverlap(movingRect, w)
+      w.id !== movingWidgetId && rectanglesOverlap(movingRect, w)
     );
 
     if (overlappingWidgets.length > 0) {
@@ -199,16 +178,14 @@ export default function App() {
       const pushDownY = movingRect.y + movingRect.height + WIDGET_MARGIN;
       
       // Update overlapping widgets positions
-      overlappingWidgets.forEach(widget => {
-        if (widget.y < pushDownY) {
-          // Update the widget position
-          setWidgets(prevWidgets => 
-            prevWidgets.map(w => 
-              w.id === widget.id ? { ...w, y: pushDownY } : w
-            )
-          );
-        }
-      });
+      setWidgets(prevWidgets => 
+        prevWidgets.map(w => {
+          if (overlappingWidgets.some(ow => ow.id === w.id) && w.y < pushDownY) {
+            return { ...w, y: pushDownY };
+          }
+          return w;
+        })
+      );
     }
   };
 
@@ -227,7 +204,7 @@ export default function App() {
         const newY = Math.max(0, dragState.initialY + deltaY);
 
         // Handle collisions
-        handleCollisions(widget, newX, newY);
+        handleCollisions(dragState.widgetId!, newX, newY);
 
         updateWidget(dragState.widgetId!, {
           x: newX,
@@ -241,7 +218,7 @@ export default function App() {
         const newHeight = Math.max(150, dragState.startHeight + deltaY);
 
         // Handle collisions during resize
-        handleCollisions(widget, widget.x, widget.y, newWidth, newHeight);
+        handleCollisions(dragState.widgetId!, widget.x, widget.y, newWidth, newHeight);
 
         updateWidget(dragState.widgetId!, {
           width: newWidth,
@@ -281,24 +258,21 @@ export default function App() {
 
   // Find the next available position for a new widget
   const findNextAvailablePosition = () => {
-    const cols = 3; // Number of columns in our grid
-    const startX = 60; // Starting X position
-    const startY = 30; // Starting Y position
+    const cols = 3;
+    const startX = 60;
+    const startY = 30;
     
-    // Calculate grid positions
-    for (let row = 0; row < 10; row++) { // Check up to 10 rows
+    for (let row = 0; row < 10; row++) {
       for (let col = 0; col < cols; col++) {
         const x = startX + col * (WIDGET_WIDTH + WIDGET_MARGIN);
         const y = startY + row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
-        // Check if this position is occupied
         const isOccupied = widgets.some(widget => {
           const widgetRight = widget.x + widget.width;
           const widgetBottom = widget.y + widget.height;
           const newRight = x + WIDGET_WIDTH;
           const newBottom = y + WIDGET_HEIGHT;
           
-          // Check for overlap
           return !(x >= widgetRight || newRight <= widget.x || y >= widgetBottom || newBottom <= widget.y);
         });
         
@@ -308,7 +282,6 @@ export default function App() {
       }
     }
     
-    // If no position found, place it at the end
     return { 
       x: startX, 
       y: startY + Math.ceil(widgets.length / cols) * (WIDGET_HEIGHT + WIDGET_MARGIN)
@@ -382,19 +355,6 @@ export default function App() {
     });
   };
 
-  const handleMenuMouseEnter = () => {
-    if (menuTimeoutRef.current) {
-      clearTimeout(menuTimeoutRef.current);
-    }
-    setShowAddMenu(true);
-  };
-
-  const handleMenuMouseLeave = () => {
-    menuTimeoutRef.current = setTimeout(() => {
-      setShowAddMenu(false);
-    }, 150);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
@@ -408,8 +368,8 @@ export default function App() {
 
           <div
             className="relative"
-            onMouseEnter={handleMenuMouseEnter}
-            onMouseLeave={handleMenuMouseLeave}
+            onMouseEnter={() => setShowAddMenu(true)}
+            onMouseLeave={() => setShowAddMenu(false)}
           >
             <Button variant="outline" size="sm" className="w-9 h-9 p-0">
               <Plus className="w-4 h-4" />
@@ -863,7 +823,6 @@ function RSSWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string
     setError('');
     
     try {
-      // Using a CORS proxy to fetch RSS feeds
       const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url.trim())}`;
       const response = await fetch(proxyUrl);
       const data = await response.json();
