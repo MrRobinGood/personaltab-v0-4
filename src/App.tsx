@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Menu, GripVertical, X, ExternalLink, Download, Upload, Check, MoreHorizontal } from "lucide-react";
+import { Plus, Menu, GripVertical, X, ExternalLink, Download, Upload, Check, MoreHorizontal, Calendar, Clock } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,19 @@ interface TodoItem {
   completed: boolean;
 }
 
+interface RSSItem {
+  title: string;
+  link: string;
+  description: string;
+  pubDate: string;
+  image?: string;
+}
+
 const STORAGE_KEY = 'personaltab-data';
+const GRID_SIZE = 20; // Grid snap size
+const WIDGET_WIDTH = 310;
+const WIDGET_HEIGHT = 400;
+const WIDGET_MARGIN = 20;
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -213,24 +225,65 @@ export default function App() {
     };
   }, [dragState, widgets]);
 
+  // Find the next available position for a new widget
+  const findNextAvailablePosition = () => {
+    const cols = 3; // Number of columns in our grid
+    const startX = 60; // Starting X position
+    const startY = 30; // Starting Y position
+    
+    // Calculate grid positions
+    for (let row = 0; row < 10; row++) { // Check up to 10 rows
+      for (let col = 0; col < cols; col++) {
+        const x = startX + col * (WIDGET_WIDTH + WIDGET_MARGIN);
+        const y = startY + row * (WIDGET_HEIGHT + WIDGET_MARGIN);
+        
+        // Check if this position is occupied
+        const isOccupied = widgets.some(widget => {
+          const widgetRight = widget.x + widget.width;
+          const widgetBottom = widget.y + widget.height;
+          const newRight = x + WIDGET_WIDTH;
+          const newBottom = y + WIDGET_HEIGHT;
+          
+          // Check for overlap
+          return !(x >= widgetRight || newRight <= widget.x || y >= widgetBottom || newBottom <= widget.y);
+        });
+        
+        if (!isOccupied) {
+          return { x, y };
+        }
+      }
+    }
+    
+    // If no position found, place it at the end
+    return { 
+      x: startX, 
+      y: startY + Math.ceil(widgets.length / cols) * (WIDGET_HEIGHT + WIDGET_MARGIN)
+    };
+  };
+
   const addWidget = (type: Widget['type']) => {
     const newZIndex = maxZIndex + 1;
     const titleMap = {
       'notes': 'Notes',
       'todo': 'List',
       'links': 'Links',
-      'rss': 'RSS'
+      'rss': 'RSS Feed'
     };
+
+    const position = findNextAvailablePosition();
 
     const newWidget: Widget = {
       id: String(nextId),
       type,
       title: titleMap[type],
-      content: type === 'notes' ? { text: '' } : type === 'links' ? { links: [] } : { todos: [] },
-      x: 20 + (widgets.length * 30),
-      y: 20 + (widgets.length * 30),
-      width: 310,
-      height: 400,
+      content: type === 'notes' ? { text: '' } : 
+               type === 'links' ? { links: [] } : 
+               type === 'rss' ? { url: '', items: [] } :
+               { todos: [] },
+      x: position.x,
+      y: position.y,
+      width: WIDGET_WIDTH,
+      height: WIDGET_HEIGHT,
       zIndex: newZIndex
     };
     setWidgets([...widgets, newWidget]);
@@ -299,35 +352,46 @@ export default function App() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2 text-xs whitespace-nowrap"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => {
                     addWidget('notes');
                     setShowAddMenu(false);
                   }}
                 >
-                  📝 Notes
+                  Notes
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2 text-xs whitespace-nowrap"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => {
                     addWidget('todo');
                     setShowAddMenu(false);
                   }}
                 >
-                  ✅ List
+                  List
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2 text-xs whitespace-nowrap"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => {
                     addWidget('links');
                     setShowAddMenu(false);
                   }}
                 >
-                  🔗 Links
+                  Links
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-3 text-xs whitespace-nowrap"
+                  onClick={() => {
+                    addWidget('rss');
+                    setShowAddMenu(false);
+                  }}
+                >
+                  RSS Feed
                 </Button>
               </div>
             )}
@@ -452,6 +516,7 @@ function WidgetCard({
         {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
+        {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
       </CardContent>
 
       {/* Resize Handle - Bottom Right Corner */}
@@ -625,6 +690,145 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
             >
               <X className="w-3 h-3" />
             </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RSSWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string, updates: Partial<Widget>) => void }) {
+  const [url, setUrl] = useState(widget.content.url || '');
+  const [items, setItems] = useState<RSSItem[]>(widget.content.items || []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setUrl(widget.content.url || '');
+    setItems(widget.content.items || []);
+  }, [widget.content]);
+
+  const fetchRSSFeed = async () => {
+    if (!url.trim()) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      // Using a CORS proxy to fetch RSS feeds
+      const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url.trim())}`;
+      const response = await fetch(proxyUrl);
+      const data = await response.json();
+      
+      if (data.status === 'ok') {
+        const rssItems: RSSItem[] = data.items.slice(0, 5).map((item: any) => ({
+          title: item.title || 'No title',
+          link: item.link || '#',
+          description: item.description ? item.description.replace(/<[^>]*>/g, '').substring(0, 150) + '...' : 'No description',
+          pubDate: item.pubDate || new Date().toISOString(),
+          image: item.thumbnail || item.enclosure?.link || ''
+        }));
+        
+        setItems(rssItems);
+        onUpdate(widget.id, { content: { url: url.trim(), items: rssItems } });
+      } else {
+        setError('Failed to fetch RSS feed. Please check the URL.');
+      }
+    } catch (err) {
+      setError('Error fetching RSS feed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+      });
+    } catch {
+      return 'Unknown date';
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* RSS URL input */}
+      <div className="flex items-center gap-2 mb-3">
+        <Plus className="w-4 h-4 text-gray-400" />
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="RSS feed URL..."
+          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') fetchRSSFeed();
+          }}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={fetchRSSFeed}
+          disabled={loading || !url.trim()}
+        >
+          {loading ? (
+            <div className="w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+          ) : (
+            <Check className="w-3 h-3" />
+          )}
+        </Button>
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="text-xs text-red-500 mb-2 p-2 bg-red-50 rounded">
+          {error}
+        </div>
+      )}
+
+      {/* RSS items */}
+      <div className="flex-1 overflow-y-auto space-y-2">
+        {items.length === 0 && !loading && !error && (
+          <div className="text-sm text-gray-500 text-center py-4">
+            Enter an RSS feed URL above to get started
+          </div>
+        )}
+        
+        {items.map((item, index) => (
+          <div key={index} className="p-2 rounded bg-gray-50 hover:bg-gray-100 transition-colors">
+            <div className="flex items-start gap-2">
+              {item.image && (
+                <img 
+                  src={item.image} 
+                  alt="" 
+                  className="w-12 h-12 rounded object-cover flex-shrink-0"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-blue-600 hover:underline line-clamp-2 block"
+                >
+                  {item.title}
+                </a>
+                <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                  <Calendar className="w-3 h-3" />
+                  <span>{formatDate(item.pubDate)}</span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                  {item.description}
+                </p>
+              </div>
+            </div>
           </div>
         ))}
       </div>
