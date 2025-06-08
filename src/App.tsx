@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Menu, GripVertical, X, ExternalLink, Download, Upload, Check, MoreHorizontal, Calendar, Clock, Bold, Italic } from "lucide-react";
+import { Plus, Menu, GripVertical, X, ExternalLink, Download, Upload, Check, MoreHorizontal, Calendar, Clock } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,7 @@ export default function App() {
         id: '1',
         type: 'notes',
         title: 'Notes',
-        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.\n\nUse **Ctrl+B** for bold and **Ctrl+I** for italic!' },
+        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.\n\nUse Ctrl+B for bold and Ctrl+I for italic!' },
         x: 60,
         y: 30,
         width: 310,
@@ -535,123 +535,73 @@ function WidgetCard({
   );
 }
 
-// Helper function to render markdown-style text with bold and italic
-function renderFormattedText(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
-  
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      // Bold text
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
-      // Italic text
-      return <em key={index}>{part.slice(1, -1)}</em>;
-    } else {
-      // Regular text
-      return part;
-    }
-  });
-}
-
 function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string, updates: Partial<Widget>) => void }) {
-  const [text, setText] = useState(widget.content.text || '');
-  const [isEditing, setIsEditing] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [content, setContent] = useState(widget.content.text || '');
+  const editorRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setText(widget.content.text || ''), [widget.content.text]);
+  useEffect(() => {
+    setContent(widget.content.text || '');
+    if (editorRef.current) {
+      editorRef.current.innerHTML = formatTextToHTML(widget.content.text || '');
+    }
+  }, [widget.content.text]);
 
-  const handleChange = (newText: string) => {
-    setText(newText);
-    onUpdate(widget.id, { content: { text: newText } });
+  const formatTextToHTML = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+  const extractTextFromHTML = (html: string) => {
+    return html
+      .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+      .replace(/<em>(.*?)<\/em>/g, '*$1*')
+      .replace(/<br>/g, '\n')
+      .replace(/<div>/g, '\n')
+      .replace(/<\/div>/g, '')
+      .replace(/&nbsp;/g, ' ');
+  };
 
-    const isCtrl = e.ctrlKey || e.metaKey; // Support both Ctrl (Windows) and Cmd (Mac)
+  const handleInput = () => {
+    if (editorRef.current) {
+      const textContent = extractTextFromHTML(editorRef.current.innerHTML);
+      setContent(textContent);
+      onUpdate(widget.id, { content: { text: textContent } });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const isCtrl = e.ctrlKey || e.metaKey;
 
     if (isCtrl && (e.key === 'b' || e.key === 'B')) {
       e.preventDefault();
-      insertFormatting('**', '**', 'bold text');
+      document.execCommand('bold', false);
+      handleInput();
     } else if (isCtrl && (e.key === 'i' || e.key === 'I')) {
       e.preventDefault();
-      insertFormatting('*', '*', 'italic text');
+      document.execCommand('italic', false);
+      handleInput();
     }
-  };
-
-  const insertFormatting = (startTag: string, endTag: string, placeholder: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = text.substring(start, end);
-    
-    let newText: string;
-    let newCursorPos: number;
-
-    if (selectedText) {
-      // If text is selected, wrap it with formatting
-      newText = text.substring(0, start) + startTag + selectedText + endTag + text.substring(end);
-      newCursorPos = end + startTag.length + endTag.length;
-    } else {
-      // If no text selected, insert placeholder with formatting
-      newText = text.substring(0, start) + startTag + placeholder + endTag + text.substring(end);
-      newCursorPos = start + startTag.length + placeholder.length;
-    }
-
-    setText(newText);
-    onUpdate(widget.id, { content: { text: newText } });
-
-    // Set cursor position after state update
-    setTimeout(() => {
-      if (textarea) {
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 0);
   };
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1 text-xs text-gray-500">
-          <Bold className="w-3 h-3" />
-          <span>Ctrl+B</span>
-          <span className="mx-1">•</span>
-          <Italic className="w-3 h-3" />
-          <span>Ctrl+I</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={() => setIsEditing(!isEditing)}
-        >
-          {isEditing ? 'Preview' : 'Edit'}
-        </Button>
+      <div className="text-xs text-gray-500 mb-2 flex items-center gap-2">
+        <span>Ctrl+B for <strong>bold</strong></span>
+        <span>•</span>
+        <span>Ctrl+I for <em>italic</em></span>
       </div>
-      
-      {isEditing ? (
-        <Textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Start typing your notes... Use Ctrl+B for **bold** and Ctrl+I for *italic*"
-          className="flex-1 resize-none border-0 bg-transparent focus:ring-0 text-sm"
-        />
-      ) : (
-        <div 
-          className="flex-1 overflow-y-auto text-sm whitespace-pre-wrap p-3 bg-gray-50 rounded cursor-pointer"
-          onClick={() => setIsEditing(true)}
-        >
-          {text ? renderFormattedText(text) : (
-            <span className="text-gray-500">Click to start typing...</span>
-          )}
-        </div>
-      )}
+      <div
+        ref={editorRef}
+        contentEditable
+        className="flex-1 overflow-y-auto text-sm p-3 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        style={{ minHeight: '100px' }}
+        suppressContentEditableWarning={true}
+        placeholder="Start typing your notes..."
+      />
     </div>
   );
 }
