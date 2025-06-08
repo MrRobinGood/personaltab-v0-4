@@ -36,7 +36,7 @@ interface TodoItem {
   id: string;
   text: string;
   completed: boolean;
-  color: 'black' | 'dark-gray' | 'light-gray' | 'white';
+  backgroundColor: 'white' | 'light-gray' | 'dark-gray' | 'black';
 }
 
 interface RSSItem {
@@ -180,34 +180,36 @@ export default function App() {
              rect2.y + rect2.height <= rect1.y);
   };
 
-  // Find a safe position for a widget that doesn't overlap with others
-  const findSafePosition = (targetWidget: Widget, newX: number, newY: number, newWidth?: number, newHeight?: number) => {
-    const testRect = {
+  // Handle collision detection and repositioning
+  const handleCollisions = (movingWidget: Widget, newX: number, newY: number, newWidth?: number, newHeight?: number) => {
+    const movingRect = {
       x: newX,
       y: newY,
-      width: newWidth || targetWidget.width,
-      height: newHeight || targetWidget.height
+      width: newWidth || movingWidget.width,
+      height: newHeight || movingWidget.height
     };
 
-    // Check for overlaps with other widgets
+    // Find all widgets that would overlap with the moving widget
     const overlappingWidgets = widgets.filter(w => 
-      w.id !== targetWidget.id && rectanglesOverlap(testRect, w)
+      w.id !== movingWidget.id && rectanglesOverlap(movingRect, w)
     );
 
-    if (overlappingWidgets.length === 0) {
-      return { x: newX, y: newY };
+    if (overlappingWidgets.length > 0) {
+      // Calculate how much to push down overlapping widgets
+      const pushDownY = movingRect.y + movingRect.height + WIDGET_MARGIN;
+      
+      // Update overlapping widgets positions
+      overlappingWidgets.forEach(widget => {
+        if (widget.y < pushDownY) {
+          // Update the widget position
+          setWidgets(prevWidgets => 
+            prevWidgets.map(w => 
+              w.id === widget.id ? { ...w, y: pushDownY } : w
+            )
+          );
+        }
+      });
     }
-
-    // If there are overlaps, push overlapping widgets down
-    const pushDistance = testRect.y + testRect.height + WIDGET_MARGIN;
-    
-    overlappingWidgets.forEach(widget => {
-      if (widget.y < pushDistance) {
-        updateWidget(widget.id, { y: pushDistance });
-      }
-    });
-
-    return { x: newX, y: newY };
   };
 
   useEffect(() => {
@@ -224,12 +226,12 @@ export default function App() {
         const newX = Math.max(0, dragState.initialX + deltaX);
         const newY = Math.max(0, dragState.initialY + deltaY);
 
-        // Use smart positioning to avoid overlaps
-        const safePosition = findSafePosition(widget, newX, newY);
-        
+        // Handle collisions
+        handleCollisions(widget, newX, newY);
+
         updateWidget(dragState.widgetId!, {
-          x: safePosition.x,
-          y: safePosition.y
+          x: newX,
+          y: newY
         });
       } else if (dragState.isResizing) {
         const deltaX = e.clientX - dragState.startX;
@@ -238,14 +240,12 @@ export default function App() {
         const newWidth = Math.max(200, dragState.startWidth + deltaX);
         const newHeight = Math.max(150, dragState.startHeight + deltaY);
 
-        // Use smart positioning for resizing too
-        const safePosition = findSafePosition(widget, widget.x, widget.y, newWidth, newHeight);
+        // Handle collisions during resize
+        handleCollisions(widget, widget.x, widget.y, newWidth, newHeight);
 
         updateWidget(dragState.widgetId!, {
           width: newWidth,
-          height: newHeight,
-          x: safePosition.x,
-          y: safePosition.y
+          height: newHeight
         });
       }
     };
@@ -671,7 +671,7 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
       id: String(Date.now()), 
       text: newTodo.trim(), 
       completed: false,
-      color: 'black' as const
+      backgroundColor: 'white' as const
     }];
     setTodos(updated);
     onUpdate(widget.id, { content: { todos: updated } });
@@ -690,13 +690,13 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
     onUpdate(widget.id, { content: { todos: updated } });
   };
 
-  const cycleColor = (id: string) => {
-    const colorCycle: TodoItem['color'][] = ['black', 'dark-gray', 'light-gray', 'white'];
+  const cycleBackgroundColor = (id: string) => {
+    const colorCycle: TodoItem['backgroundColor'][] = ['white', 'light-gray', 'dark-gray', 'black'];
     const updated = todos.map(t => {
       if (t.id === id) {
-        const currentIndex = colorCycle.indexOf(t.color);
+        const currentIndex = colorCycle.indexOf(t.backgroundColor);
         const nextIndex = (currentIndex + 1) % colorCycle.length;
-        return { ...t, color: colorCycle[nextIndex] };
+        return { ...t, backgroundColor: colorCycle[nextIndex] };
       }
       return t;
     });
@@ -704,21 +704,21 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
     onUpdate(widget.id, { content: { todos: updated } });
   };
 
-  const getColorClasses = (color: TodoItem['color'], completed: boolean) => {
-    const baseClasses = "text-sm flex-1 cursor-pointer select-none";
+  const getBackgroundClasses = (backgroundColor: TodoItem['backgroundColor'], completed: boolean) => {
+    const baseClasses = "text-sm flex-1 cursor-pointer select-none p-2 rounded transition-colors";
     const completedClass = completed ? 'line-through opacity-60' : '';
     
-    switch (color) {
-      case 'black':
-        return `${baseClasses} text-black ${completedClass}`;
-      case 'dark-gray':
-        return `${baseClasses} text-gray-600 ${completedClass}`;
-      case 'light-gray':
-        return `${baseClasses} text-gray-400 ${completedClass}`;
+    switch (backgroundColor) {
       case 'white':
-        return `${baseClasses} text-white bg-gray-800 px-2 py-1 rounded ${completedClass}`;
+        return `${baseClasses} bg-white text-black border ${completedClass}`;
+      case 'light-gray':
+        return `${baseClasses} bg-gray-200 text-black ${completedClass}`;
+      case 'dark-gray':
+        return `${baseClasses} bg-gray-600 text-white ${completedClass}`;
+      case 'black':
+        return `${baseClasses} bg-black text-white ${completedClass}`;
       default:
-        return `${baseClasses} text-black ${completedClass}`;
+        return `${baseClasses} bg-white text-black border ${completedClass}`;
     }
   };
 
@@ -739,26 +739,26 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
       </div>
 
       {/* Todo list */}
-      <div className="flex-1 overflow-y-auto space-y-1">
+      <div className="flex-1 overflow-y-auto space-y-2">
         {todos.map((todo) => (
-          <div key={todo.id} className="flex items-center gap-2 p-2 rounded bg-gray-50 group">
+          <div key={todo.id} className="flex items-center gap-2 group">
             <input
               type="checkbox"
               checked={todo.completed}
               onChange={() => toggleTodo(todo.id)}
-              className="w-4 h-4"
+              className="w-4 h-4 flex-shrink-0"
             />
-            <span 
-              className={getColorClasses(todo.color, todo.completed)}
-              onClick={() => cycleColor(todo.id)}
-              title="Click to change color"
+            <div 
+              className={getBackgroundClasses(todo.backgroundColor, todo.completed)}
+              onClick={() => cycleBackgroundColor(todo.id)}
+              title="Click to change background color"
             >
               {todo.text}
-            </span>
+            </div>
             <Button
               variant="ghost"
               size="sm"
-              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 flex-shrink-0"
               onClick={() => removeTodo(todo.id)}
             >
               <X className="w-3 h-3" />
