@@ -156,40 +156,63 @@ export default function App() {
              rect2.y + rect2.height <= rect1.y);
   };
 
-  // Handle collision detection and repositioning
-  const handleCollisions = (movingWidgetId: string, newX: number, newY: number, newWidth?: number, newHeight?: number) => {
-    const movingWidget = widgets.find(w => w.id === movingWidgetId);
-    if (!movingWidget) return { x: newX, y: newY };
-
+  // Find a safe position that doesn't overlap with existing widgets
+  const findSafePosition = (movingWidgetId: string, targetX: number, targetY: number, targetWidth: number, targetHeight: number) => {
     const movingRect = {
-      x: newX,
-      y: newY,
-      width: newWidth || movingWidget.width,
-      height: newHeight || movingWidget.height
+      x: targetX,
+      y: targetY,
+      width: targetWidth,
+      height: targetHeight
     };
 
-    // Find all widgets that would overlap with the moving widget
-    const overlappingWidgets = widgets.filter(w => 
-      w.id !== movingWidgetId && rectanglesOverlap(movingRect, w)
-    );
-
-    if (overlappingWidgets.length > 0) {
-      // Calculate how much to push down overlapping widgets
-      const pushDownY = movingRect.y + movingRect.height + WIDGET_MARGIN;
-      
-      // Update overlapping widgets positions immediately
-      const updatedWidgets = widgets.map(w => {
-        if (overlappingWidgets.some(ow => ow.id === w.id)) {
-          return { ...w, y: Math.max(w.y, pushDownY) };
-        }
-        return w;
-      });
-
-      // Update the widgets state
-      setWidgets(updatedWidgets);
+    // Get all other widgets (excluding the one being moved)
+    const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
+    
+    // Check if the target position overlaps with any other widget
+    const hasCollision = otherWidgets.some(widget => rectanglesOverlap(movingRect, widget));
+    
+    if (!hasCollision) {
+      return { x: targetX, y: targetY };
     }
 
-    return { x: newX, y: newY };
+    // If there's a collision, try to find a safe position
+    // First, try moving down
+    let safeY = targetY;
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    while (attempts < maxAttempts) {
+      const testRect = { ...movingRect, y: safeY };
+      const stillColliding = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
+      
+      if (!stillColliding) {
+        return { x: targetX, y: safeY };
+      }
+      
+      // Move down by the height of the widget plus margin
+      safeY += targetHeight + WIDGET_MARGIN;
+      attempts++;
+    }
+
+    // If we can't find a safe position by moving down, try moving right
+    let safeX = targetX + targetWidth + WIDGET_MARGIN;
+    safeY = targetY;
+    attempts = 0;
+
+    while (attempts < maxAttempts) {
+      const testRect = { ...movingRect, x: safeX, y: safeY };
+      const stillColliding = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
+      
+      if (!stillColliding) {
+        return { x: safeX, y: safeY };
+      }
+      
+      safeX += targetWidth + WIDGET_MARGIN;
+      attempts++;
+    }
+
+    // If all else fails, return the original position
+    return { x: targetX, y: targetY };
   };
 
   useEffect(() => {
@@ -206,12 +229,10 @@ export default function App() {
         const newX = Math.max(0, dragState.initialX + deltaX);
         const newY = Math.max(0, dragState.initialY + deltaY);
 
-        // Handle collisions and get final position
-        const finalPosition = handleCollisions(dragState.widgetId!, newX, newY);
-
+        // Update position immediately during drag (no collision detection during drag)
         updateWidget(dragState.widgetId!, {
-          x: finalPosition.x,
-          y: finalPosition.y
+          x: newX,
+          y: newY
         });
       } else if (dragState.isResizing) {
         const deltaX = e.clientX - dragState.startX;
@@ -219,9 +240,6 @@ export default function App() {
 
         const newWidth = Math.max(200, dragState.startWidth + deltaX);
         const newHeight = Math.max(150, dragState.startHeight + deltaY);
-
-        // Handle collisions during resize
-        handleCollisions(dragState.widgetId!, widget.x, widget.y, newWidth, newHeight);
 
         updateWidget(dragState.widgetId!, {
           width: newWidth,
@@ -231,6 +249,20 @@ export default function App() {
     };
 
     const handleMouseUp = () => {
+      // Apply collision detection only when drag ends
+      if (dragState.isDragging && dragState.widgetId) {
+        const widget = widgets.find(w => w.id === dragState.widgetId);
+        if (widget) {
+          const safePosition = findSafePosition(dragState.widgetId, widget.x, widget.y, widget.width, widget.height);
+          if (safePosition.x !== widget.x || safePosition.y !== widget.y) {
+            updateWidget(dragState.widgetId, {
+              x: safePosition.x,
+              y: safePosition.y
+            });
+          }
+        }
+      }
+
       setDragState({
         isDragging: false,
         isResizing: false,
@@ -270,14 +302,8 @@ export default function App() {
         const x = startX + col * (WIDGET_WIDTH + WIDGET_MARGIN);
         const y = startY + row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
-        const isOccupied = widgets.some(widget => {
-          const widgetRight = widget.x + widget.width;
-          const widgetBottom = widget.y + widget.height;
-          const newRight = x + WIDGET_WIDTH;
-          const newBottom = y + WIDGET_HEIGHT;
-          
-          return !(x >= widgetRight || newRight <= widget.x || y >= widgetBottom || newBottom <= widget.y);
-        });
+        const testRect = { x, y, width: WIDGET_WIDTH, height: WIDGET_HEIGHT };
+        const isOccupied = widgets.some(widget => rectanglesOverlap(testRect, widget));
         
         if (!isOccupied) {
           return { x, y };
