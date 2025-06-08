@@ -159,7 +159,7 @@ export default function App() {
   // Handle collision detection and repositioning
   const handleCollisions = (movingWidgetId: string, newX: number, newY: number, newWidth?: number, newHeight?: number) => {
     const movingWidget = widgets.find(w => w.id === movingWidgetId);
-    if (!movingWidget) return;
+    if (!movingWidget) return { x: newX, y: newY };
 
     const movingRect = {
       x: newX,
@@ -177,16 +177,19 @@ export default function App() {
       // Calculate how much to push down overlapping widgets
       const pushDownY = movingRect.y + movingRect.height + WIDGET_MARGIN;
       
-      // Update overlapping widgets positions
-      setWidgets(prevWidgets => 
-        prevWidgets.map(w => {
-          if (overlappingWidgets.some(ow => ow.id === w.id) && w.y < pushDownY) {
-            return { ...w, y: pushDownY };
-          }
-          return w;
-        })
-      );
+      // Update overlapping widgets positions immediately
+      const updatedWidgets = widgets.map(w => {
+        if (overlappingWidgets.some(ow => ow.id === w.id)) {
+          return { ...w, y: Math.max(w.y, pushDownY) };
+        }
+        return w;
+      });
+
+      // Update the widgets state
+      setWidgets(updatedWidgets);
     }
+
+    return { x: newX, y: newY };
   };
 
   useEffect(() => {
@@ -203,12 +206,12 @@ export default function App() {
         const newX = Math.max(0, dragState.initialX + deltaX);
         const newY = Math.max(0, dragState.initialY + deltaY);
 
-        // Handle collisions
-        handleCollisions(dragState.widgetId!, newX, newY);
+        // Handle collisions and get final position
+        const finalPosition = handleCollisions(dragState.widgetId!, newX, newY);
 
         updateWidget(dragState.widgetId!, {
-          x: newX,
-          y: newY
+          x: finalPosition.x,
+          y: finalPosition.y
         });
       } else if (dragState.isResizing) {
         const deltaX = e.clientX - dragState.startX;
