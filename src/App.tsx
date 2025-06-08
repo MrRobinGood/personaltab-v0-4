@@ -370,7 +370,7 @@ export default function App() {
                   className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('notes')}
                 >
-                  📝 Notes
+                  Notes
                 </Button>
                 <Button
                   variant="ghost"
@@ -378,7 +378,7 @@ export default function App() {
                   className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('todo')}
                 >
-                  ✅ List
+                  List
                 </Button>
                 <Button
                   variant="ghost"
@@ -386,7 +386,7 @@ export default function App() {
                   className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('links')}
                 >
-                  🔗 Links
+                  Links
                 </Button>
                 <Button
                   variant="ghost"
@@ -394,7 +394,7 @@ export default function App() {
                   className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('rss')}
                 >
-                  📡 RSS Feed
+                  RSS Feed
                 </Button>
               </div>
             )}
@@ -535,8 +535,27 @@ function WidgetCard({
   );
 }
 
+// Helper function to render markdown-style text with bold and italic
+function renderFormattedText(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+  
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      // Bold text
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+      // Italic text
+      return <em key={index}>{part.slice(1, -1)}</em>;
+    } else {
+      // Regular text
+      return part;
+    }
+  });
+}
+
 function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string, updates: Partial<Widget>) => void }) {
   const [text, setText] = useState(widget.content.text || '');
+  const [isEditing, setIsEditing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => setText(widget.content.text || ''), [widget.content.text]);
@@ -596,21 +615,43 @@ function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center gap-1 mb-2 text-xs text-gray-500">
-        <Bold className="w-3 h-3" />
-        <span>Ctrl+B</span>
-        <span className="mx-1">•</span>
-        <Italic className="w-3 h-3" />
-        <span>Ctrl+I</span>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <Bold className="w-3 h-3" />
+          <span>Ctrl+B</span>
+          <span className="mx-1">•</span>
+          <Italic className="w-3 h-3" />
+          <span>Ctrl+I</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={() => setIsEditing(!isEditing)}
+        >
+          {isEditing ? 'Preview' : 'Edit'}
+        </Button>
       </div>
-      <Textarea
-        ref={textareaRef}
-        value={text}
-        onChange={(e) => handleChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Start typing your notes... Use Ctrl+B for **bold** and Ctrl+I for *italic*"
-        className="flex-1 resize-none border-0 bg-transparent focus:ring-0 text-sm"
-      />
+      
+      {isEditing ? (
+        <Textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Start typing your notes... Use Ctrl+B for **bold** and Ctrl+I for *italic*"
+          className="flex-1 resize-none border-0 bg-transparent focus:ring-0 text-sm"
+        />
+      ) : (
+        <div 
+          className="flex-1 overflow-y-auto text-sm whitespace-pre-wrap p-3 bg-gray-50 rounded cursor-pointer"
+          onClick={() => setIsEditing(true)}
+        >
+          {text ? renderFormattedText(text) : (
+            <span className="text-gray-500">Click to start typing...</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
