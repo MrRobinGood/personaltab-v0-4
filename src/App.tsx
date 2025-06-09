@@ -47,7 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v7';
+const STORAGE_KEY = 'personaltab-data-v8';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -285,9 +285,10 @@ export default function App() {
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType={null}
-          preventCollision={true}
+          compactType="vertical"
+          preventCollision={false}
           useCSSTransforms={true}
+          allowOverlap={false}
         >
           {widgets.map((widget) => (
             <div key={widget.id}>
