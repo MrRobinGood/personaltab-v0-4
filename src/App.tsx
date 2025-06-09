@@ -169,13 +169,22 @@ export default function App() {
       try {
         const data = JSON.parse(saved);
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
-          setWidgets(data.widgets);
-          setNextId(data.nextId || 4);
+          // Ensure all widgets have grid positions
+          const validatedWidgets = data.widgets.map((widget: any) => ({
+            ...widget,
+            gridX: widget.gridX ?? 0,
+            gridY: widget.gridY ?? 0,
+            width: widget.width ?? WIDGET_WIDTH,
+            height: widget.height ?? WIDGET_HEIGHT
+          }));
+          setWidgets(validatedWidgets);
+          setNextId(data.nextId || validatedWidgets.length + 1);
           setMaxZIndex(data.maxZIndex || 1);
         } else {
           initializeDefaultWidgets();
         }
       } catch (error) {
+        console.error('Error loading saved data:', error);
         initializeDefaultWidgets();
       }
     } else {
