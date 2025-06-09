@@ -18,8 +18,8 @@ interface Widget {
   type: 'notes' | 'links' | 'todo' | 'rss';
   title: string;
   content: any;
-  x: number;
-  y: number;
+  gridX: number;  // Grid column (0, 1, 2, ...)
+  gridY: number;  // Grid row (0, 1, 2, ...)
   width: number;
   height: number;
   zIndex: number;
@@ -48,7 +48,11 @@ interface RSSItem {
 }
 
 const STORAGE_KEY = 'personaltab-data-v2';
-const GRID_SIZE = 20;
+const GRID_COLS = 3;
+const GRID_CELL_WIDTH = 330;
+const GRID_CELL_HEIGHT = 420;
+const GRID_START_X = 60;
+const GRID_START_Y = 60;
 const WIDGET_WIDTH = 310;
 const WIDGET_HEIGHT = 400;
 
@@ -68,8 +72,6 @@ export default function App() {
     startHeight: number;
     offsetX: number;
     offsetY: number;
-    originalX: number;
-    originalY: number;
   }>({
     isDragging: false,
     isResizing: false,
@@ -79,29 +81,41 @@ export default function App() {
     startWidth: 0,
     startHeight: 0,
     offsetX: 0,
-    offsetY: 0,
-    originalX: 0,
-    originalY: 0
+    offsetY: 0
   });
   const [maxZIndex, setMaxZIndex] = useState(1);
-  const [dragPreview, setDragPreview] = useState<{x: number, y: number} | null>(null);
+  const [dragPreview, setDragPreview] = useState<{gridX: number, gridY: number} | null>(null);
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Snap to grid function
-  const snapToGrid = (value: number) => {
-    return Math.round(value / GRID_SIZE) * GRID_SIZE;
+  // Convert grid position to pixel position
+  const gridToPixel = (gridX: number, gridY: number) => ({
+    x: GRID_START_X + gridX * GRID_CELL_WIDTH,
+    y: GRID_START_Y + gridY * GRID_CELL_HEIGHT
+  });
+
+  // Convert pixel position to grid position
+  const pixelToGrid = (x: number, y: number) => ({
+    gridX: Math.max(0, Math.round((x - GRID_START_X) / GRID_CELL_WIDTH)),
+    gridY: Math.max(0, Math.round((y - GRID_START_Y) / GRID_CELL_HEIGHT))
+  });
+
+  // Check if grid position is occupied
+  const isGridPositionOccupied = (gridX: number, gridY: number, excludeId?: string) => {
+    return widgets.some(w => w.id !== excludeId && w.gridX === gridX && w.gridY === gridY);
   };
 
-  // Check if position is valid (no overlaps)
-  const isPositionValid = (x: number, y: number, width: number, height: number, excludeId: string) => {
-    const testRect = { x, y, width, height };
-    return !widgets.some(widget => {
-      if (widget.id === excludeId) return false;
-      return !(testRect.x >= widget.x + widget.width || 
-               widget.x >= testRect.x + testRect.width || 
-               testRect.y >= widget.y + widget.height || 
-               widget.y >= testRect.y + testRect.height);
-    });
+  // Find next available grid position
+  const findNextGridPosition = () => {
+    for (let row = 0; row < 20; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        if (!isGridPositionOccupied(col, row)) {
+          return { gridX: col, gridY: row };
+        }
+      }
+    }
+    // Fallback: add to end of first column
+    const maxRow = Math.max(...widgets.filter(w => w.gridX === 0).map(w => w.gridY), -1);
+    return { gridX: 0, gridY: maxRow + 1 };
   };
 
   const initializeDefaultWidgets = () => {
@@ -115,10 +129,10 @@ export default function App() {
         type: 'notes',
         title: 'Notes',
         content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.' },
-        x: 60,
-        y: 60,
-        width: 310,
-        height: 400,
+        gridX: 0,
+        gridY: 0,
+        width: WIDGET_WIDTH,
+        height: WIDGET_HEIGHT,
         zIndex: 1
       },
       {
@@ -126,10 +140,10 @@ export default function App() {
         type: 'todo',
         title: 'List',
         content: { todos: [] },
-        x: 390,
-        y: 60,
-        width: 310,
-        height: 400,
+        gridX: 1,
+        gridY: 0,
+        width: WIDGET_WIDTH,
+        height: WIDGET_HEIGHT,
         zIndex: 1
       },
       {
@@ -137,10 +151,10 @@ export default function App() {
         type: 'links',
         title: 'Links',
         content: { links: [] },
-        x: 720,
-        y: 60,
-        width: 310,
-        height: 400,
+        gridX: 2,
+        gridY: 0,
+        width: WIDGET_WIDTH,
+        height: WIDGET_HEIGHT,
         zIndex: 1
       }
     ];
@@ -180,12 +194,13 @@ export default function App() {
       if (!dragState.isDragging && !dragState.isResizing) return;
 
       if (dragState.isDragging) {
-        // Calculate where the widget would be positioned
-        const newX = Math.max(0, e.clientX - dragState.offsetX);
-        const newY = Math.max(0, e.clientY - dragState.offsetY);
+        // Calculate mouse position relative to grid
+        const mouseX = e.clientX - dragState.offsetX;
+        const mouseY = e.clientY - dragState.offsetY;
         
-        // Update preview position (always show where mouse is)
-        setDragPreview({ x: newX, y: newY });
+        // Convert to grid position
+        const gridPos = pixelToGrid(mouseX, mouseY);
+        setDragPreview(gridPos);
         
       } else if (dragState.isResizing) {
         const widget = widgets.find(w => w.id === dragState.widgetId);
@@ -194,8 +209,8 @@ export default function App() {
         const deltaX = e.clientX - dragState.startX;
         const deltaY = e.clientY - dragState.startY;
 
-        const newWidth = Math.max(200, snapToGrid(dragState.startWidth + deltaX));
-        const newHeight = Math.max(150, snapToGrid(dragState.startHeight + deltaY));
+        const newWidth = Math.max(200, dragState.startWidth + deltaX);
+        const newHeight = Math.max(150, dragState.startHeight + deltaY);
 
         setWidgets(prev => prev.map(w => 
           w.id === dragState.widgetId 
@@ -207,29 +222,16 @@ export default function App() {
 
     const handleMouseUp = () => {
       if (dragState.isDragging && dragState.widgetId && dragPreview) {
-        const widget = widgets.find(w => w.id === dragState.widgetId);
-        if (!widget) return;
-
-        // Snap to grid
-        const snappedX = snapToGrid(dragPreview.x);
-        const snappedY = snapToGrid(dragPreview.y);
-
-        // Check if the snapped position is valid
-        if (isPositionValid(snappedX, snappedY, widget.width, widget.height, dragState.widgetId)) {
-          // Position is valid, update widget
+        // Check if target position is free
+        if (!isGridPositionOccupied(dragPreview.gridX, dragPreview.gridY, dragState.widgetId)) {
+          // Move widget to new grid position
           setWidgets(prev => prev.map(w => 
             w.id === dragState.widgetId 
-              ? { ...w, x: snappedX, y: snappedY }
-              : w
-          ));
-        } else {
-          // Position is invalid, revert to original position
-          setWidgets(prev => prev.map(w => 
-            w.id === dragState.widgetId 
-              ? { ...w, x: dragState.originalX, y: dragState.originalY }
+              ? { ...w, gridX: dragPreview.gridX, gridY: dragPreview.gridY }
               : w
           ));
         }
+        // If position is occupied, widget stays in original position (no change needed)
       }
 
       setDragPreview(null);
@@ -242,9 +244,7 @@ export default function App() {
         startWidth: 0,
         startHeight: 0,
         offsetX: 0,
-        offsetY: 0,
-        originalX: 0,
-        originalY: 0
+        offsetY: 0
       });
     };
 
@@ -263,30 +263,6 @@ export default function App() {
     };
   }, [dragState, widgets, dragPreview]);
 
-  // Find the next available position for a new widget
-  const findNextAvailablePosition = () => {
-    const stepX = 330; // 310 + 20 margin
-    const stepY = 420; // 400 + 20 margin
-    const startX = 60;
-    const startY = 60;
-    
-    for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 3; col++) {
-        const x = startX + col * stepX;
-        const y = startY + row * stepY;
-        
-        if (isPositionValid(x, y, WIDGET_WIDTH, WIDGET_HEIGHT, '')) {
-          return { x, y };
-        }
-      }
-    }
-    
-    return { 
-      x: startX, 
-      y: startY + Math.ceil(widgets.length / 3) * stepY
-    };
-  };
-
   const addWidget = (type: Widget['type']) => {
     const newZIndex = maxZIndex + 1;
     const titleMap = {
@@ -296,7 +272,7 @@ export default function App() {
       'rss': 'RSS Feed'
     };
 
-    const position = findNextAvailablePosition();
+    const gridPos = findNextGridPosition();
 
     const newWidget: Widget = {
       id: String(nextId),
@@ -306,8 +282,8 @@ export default function App() {
                type === 'links' ? { links: [] } : 
                type === 'rss' ? { url: '', items: [] } :
                { todos: [] },
-      x: position.x,
-      y: position.y,
+      gridX: gridPos.gridX,
+      gridY: gridPos.gridY,
       width: WIDGET_WIDTH,
       height: WIDGET_HEIGHT,
       zIndex: newZIndex
@@ -341,9 +317,11 @@ export default function App() {
     const widget = widgets.find(w => w.id === widgetId);
     if (!widget) return;
 
+    const pixelPos = gridToPixel(widget.gridX, widget.gridY);
+
     // Calculate offset from mouse to widget top-left corner
-    const offsetX = e.clientX - widget.x;
-    const offsetY = e.clientY - widget.y;
+    const offsetX = e.clientX - pixelPos.x;
+    const offsetY = e.clientY - pixelPos.y;
 
     setDragState({
       isDragging: !isResize,
@@ -354,9 +332,7 @@ export default function App() {
       startWidth: widget.width,
       startHeight: widget.height,
       offsetX,
-      offsetY,
-      originalX: widget.x,
-      originalY: widget.y
+      offsetY
     });
   };
 
@@ -377,8 +353,8 @@ export default function App() {
   // Calculate bottom padding based on widget positions
   const getBottomPadding = () => {
     if (widgets.length === 0) return 100;
-    const maxBottom = Math.max(...widgets.map(w => w.y + w.height));
-    return Math.max(100, maxBottom + 100);
+    const maxGridY = Math.max(...widgets.map(w => w.gridY));
+    return GRID_START_Y + (maxGridY + 1) * GRID_CELL_HEIGHT + 100;
   };
 
   return (
@@ -451,72 +427,76 @@ export default function App() {
       >
         {/* Grid visualization during drag */}
         {dragState.isDragging && (
-          <div 
-            className="fixed inset-0 pointer-events-none z-10"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px)
-              `,
-              backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`
-            }}
-          />
+          <div className="absolute inset-0 pointer-events-none z-10">
+            {/* Draw grid cells */}
+            {Array.from({ length: 20 }, (_, row) => 
+              Array.from({ length: GRID_COLS }, (_, col) => {
+                const pixelPos = gridToPixel(col, row);
+                const isOccupied = isGridPositionOccupied(col, row, dragState.widgetId);
+                const isPreview = dragPreview && dragPreview.gridX === col && dragPreview.gridY === row;
+                
+                return (
+                  <div
+                    key={`${col}-${row}`}
+                    className={`absolute border-2 border-dashed rounded-lg transition-colors ${
+                      isPreview 
+                        ? isOccupied 
+                          ? 'border-red-400 bg-red-100/30' 
+                          : 'border-green-400 bg-green-100/30'
+                        : 'border-gray-300 bg-gray-100/20'
+                    }`}
+                    style={{
+                      left: pixelPos.x,
+                      top: pixelPos.y,
+                      width: WIDGET_WIDTH,
+                      height: WIDGET_HEIGHT
+                    }}
+                  >
+                    {isPreview && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className={`px-2 py-1 rounded text-xs font-medium text-white ${
+                          isOccupied ? 'bg-red-500' : 'bg-green-500'
+                        }`}>
+                          {isOccupied ? 'Occupied' : 'Drop here'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         )}
 
-        {/* Drag preview */}
-        {dragPreview && dragState.isDragging && (
-          <div
-            className="absolute border-2 border-dashed border-blue-400 bg-blue-100/30 rounded-lg pointer-events-none z-40"
-            style={{
-              left: dragPreview.x,
-              top: dragPreview.y,
-              width: widgets.find(w => w.id === dragState.widgetId)?.width || WIDGET_WIDTH,
-              height: widgets.find(w => w.id === dragState.widgetId)?.height || WIDGET_HEIGHT,
-            }}
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-                {(() => {
-                  const widget = widgets.find(w => w.id === dragState.widgetId);
-                  if (!widget) return 'Drop here';
-                  
-                  const snappedX = snapToGrid(dragPreview.x);
-                  const snappedY = snapToGrid(dragPreview.y);
-                  const isValid = isPositionValid(snappedX, snappedY, widget.width, widget.height, dragState.widgetId);
-                  
-                  return isValid ? 'Drop here' : 'Invalid position';
-                })()}
-              </div>
+        {widgets.map((widget) => {
+          const pixelPos = gridToPixel(widget.gridX, widget.gridY);
+          return (
+            <div
+              key={widget.id}
+              className="absolute"
+              style={{
+                left: pixelPos.x,
+                top: pixelPos.y,
+                width: widget.width,
+                height: widget.height,
+                zIndex: widget.zIndex,
+                opacity: dragState.isDragging && dragState.widgetId === widget.id ? 0.5 : 1
+              }}
+            >
+              <WidgetCard
+                widget={widget}
+                onRemove={removeWidget}
+                onUpdate={updateWidget}
+                onMouseDown={handleMouseDown}
+                editingTitle={editingTitle}
+                setEditingTitle={setEditingTitle}
+                editTitleValue={editTitleValue}
+                setEditTitleValue={setEditTitleValue}
+                isDragging={dragState.isDragging && dragState.widgetId === widget.id}
+              />
             </div>
-          </div>
-        )}
-
-        {widgets.map((widget) => (
-          <div
-            key={widget.id}
-            className="absolute"
-            style={{
-              left: widget.x,
-              top: widget.y,
-              width: widget.width,
-              height: widget.height,
-              zIndex: widget.zIndex,
-              opacity: dragState.isDragging && dragState.widgetId === widget.id ? 0.5 : 1
-            }}
-          >
-            <WidgetCard
-              widget={widget}
-              onRemove={removeWidget}
-              onUpdate={updateWidget}
-              onMouseDown={handleMouseDown}
-              editingTitle={editingTitle}
-              setEditingTitle={setEditingTitle}
-              editTitleValue={editTitleValue}
-              setEditTitleValue={setEditTitleValue}
-              isDragging={dragState.isDragging && dragState.widgetId === widget.id}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
