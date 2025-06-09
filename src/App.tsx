@@ -1,28 +1,20 @@
 import type React from "react";
-import { useState, useEffect, useRef } from "react";
-import { Plus, Menu, GripVertical, X, ExternalLink, Download, Upload, Check, MoreHorizontal, Calendar, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
+import { Responsive, WidthProvider } from "react-grid-layout";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem
-} from "@/components/ui/dropdown-menu";
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface Widget {
   id: string;
   type: 'notes' | 'links' | 'todo' | 'rss';
   title: string;
   content: any;
-  gridX: number;  // Grid column (0, 1, 2, ...)
-  gridY: number;  // Grid row (0, 1, 2, ...)
-  width: number;
-  height: number;
-  zIndex: number;
 }
 
 interface Link {
@@ -47,253 +39,111 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-v3';
-const GRID_COLS = 3;
-const GRID_CELL_WIDTH = 330;
-const GRID_CELL_HEIGHT = 420;
-const GRID_START_X = 60;
-const GRID_START_Y = 60;
-const WIDGET_WIDTH = 310;
-const WIDGET_HEIGHT = 400;
+interface LayoutItem {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const STORAGE_KEY = 'personaltab-data-v4';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [layouts, setLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
   const [nextId, setNextId] = useState(1);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [dragState, setDragState] = useState<{
-    isDragging: boolean;
-    isResizing: boolean;
-    widgetId: string | null;
-    startX: number;
-    startY: number;
-    startWidth: number;
-    startHeight: number;
-    offsetX: number;
-    offsetY: number;
-  }>({
-    isDragging: false,
-    isResizing: false,
-    widgetId: null,
-    startX: 0,
-    startY: 0,
-    startWidth: 0,
-    startHeight: 0,
-    offsetX: 0,
-    offsetY: 0
-  });
-  const [maxZIndex, setMaxZIndex] = useState(1);
-  const [dragPreview, setDragPreview] = useState<{gridX: number, gridY: number} | null>(null);
-  const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Convert grid position to pixel position
-  const gridToPixel = (gridX: number, gridY: number) => ({
-    x: GRID_START_X + gridX * GRID_CELL_WIDTH,
-    y: GRID_START_Y + gridY * GRID_CELL_HEIGHT
-  });
-
-  // Convert pixel position to grid position
-  const pixelToGrid = (x: number, y: number) => ({
-    gridX: Math.max(0, Math.round((x - GRID_START_X) / GRID_CELL_WIDTH)),
-    gridY: Math.max(0, Math.round((y - GRID_START_Y) / GRID_CELL_HEIGHT))
-  });
-
-  // Check if grid position is occupied
-  const isGridPositionOccupied = (gridX: number, gridY: number, excludeId?: string) => {
-    return widgets.some(w => w.id !== excludeId && w.gridX === gridX && w.gridY === gridY);
-  };
-
-  // Find next available grid position
-  const findNextGridPosition = () => {
-    for (let row = 0; row < 20; row++) {
-      for (let col = 0; col < GRID_COLS; col++) {
-        if (!isGridPositionOccupied(col, row)) {
-          return { gridX: col, gridY: row };
-        }
-      }
-    }
-    // Fallback: add to end of first column
-    const maxRow = Math.max(...widgets.filter(w => w.gridX === 0).map(w => w.gridY), -1);
-    return { gridX: 0, gridY: maxRow + 1 };
-  };
-
-  const createDefaultWidgets = (): Widget[] => {
-    return [
+  const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
+    const defaultWidgets = [
       {
         id: '1',
-        type: 'notes',
+        type: 'notes' as const,
         title: 'Notes',
-        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.' },
-        gridX: 0,
-        gridY: 0,
-        width: WIDGET_WIDTH,
-        height: WIDGET_HEIGHT,
-        zIndex: 1
+        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets to move them.\nResize by dragging corners.\nClick titles to edit them.' }
       },
       {
         id: '2',
-        type: 'todo',
+        type: 'todo' as const,
         title: 'List',
-        content: { todos: [] },
-        gridX: 1,
-        gridY: 0,
-        width: WIDGET_WIDTH,
-        height: WIDGET_HEIGHT,
-        zIndex: 1
+        content: { todos: [] }
       },
       {
         id: '3',
-        type: 'links',
+        type: 'links' as const,
         title: 'Links',
-        content: { links: [] },
-        gridX: 2,
-        gridY: 0,
-        width: WIDGET_WIDTH,
-        height: WIDGET_HEIGHT,
-        zIndex: 1
+        content: { links: [] }
       }
     ];
+
+    const defaultLayouts = {
+      lg: [
+        { i: '1', x: 0, y: 0, w: 4, h: 6 },
+        { i: '2', x: 4, y: 0, w: 4, h: 6 },
+        { i: '3', x: 8, y: 0, w: 4, h: 6 }
+      ],
+      md: [
+        { i: '1', x: 0, y: 0, w: 6, h: 6 },
+        { i: '2', x: 6, y: 0, w: 6, h: 6 },
+        { i: '3', x: 0, y: 6, w: 6, h: 6 }
+      ],
+      sm: [
+        { i: '1', x: 0, y: 0, w: 6, h: 6 },
+        { i: '2', x: 0, y: 6, w: 6, h: 6 },
+        { i: '3', x: 0, y: 12, w: 6, h: 6 }
+      ]
+    };
+
+    return { widgets: defaultWidgets, layouts: defaultLayouts };
   };
 
-  // Initialize widgets on first load
+  // Initialize widgets and layouts
   useEffect(() => {
-    console.log('Initializing widgets...');
-    
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       
       if (saved) {
         const data = JSON.parse(saved);
-        console.log('Found saved data:', data);
-        
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
-          // Validate and fix any widgets missing grid positions
-          const validatedWidgets = data.widgets.map((widget: any) => ({
-            ...widget,
-            gridX: typeof widget.gridX === 'number' ? widget.gridX : 0,
-            gridY: typeof widget.gridY === 'number' ? widget.gridY : 0,
-            width: widget.width || WIDGET_WIDTH,
-            height: widget.height || WIDGET_HEIGHT
-          }));
-          
-          console.log('Setting validated widgets:', validatedWidgets);
-          setWidgets(validatedWidgets);
-          setNextId(data.nextId || validatedWidgets.length + 1);
-          setMaxZIndex(data.maxZIndex || 1);
+          setWidgets(data.widgets);
+          setLayouts(data.layouts || {});
+          setNextId(data.nextId || data.widgets.length + 1);
           return;
         }
       }
       
       // No valid saved data, create defaults
-      console.log('No valid saved data, creating defaults');
-      const defaultWidgets = createDefaultWidgets();
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
+      setLayouts(defaultLayouts);
       setNextId(4);
-      setMaxZIndex(1);
       
     } catch (error) {
       console.error('Error loading saved data:', error);
-      // On error, create defaults
-      const defaultWidgets = createDefaultWidgets();
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
+      setLayouts(defaultLayouts);
       setNextId(4);
-      setMaxZIndex(1);
     }
   }, []);
 
-  // Save widgets whenever they change
+  // Save data whenever widgets or layouts change
   useEffect(() => {
     if (widgets.length > 0) {
-      console.log('Saving widgets:', widgets);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, nextId, maxZIndex }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, layouts, nextId }));
     }
-  }, [widgets, nextId, maxZIndex]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragState.isDragging && !dragState.isResizing) return;
-
-      if (dragState.isDragging) {
-        // Calculate mouse position relative to grid
-        const mouseX = e.clientX - dragState.offsetX;
-        const mouseY = e.clientY - dragState.offsetY;
-        
-        // Convert to grid position
-        const gridPos = pixelToGrid(mouseX, mouseY);
-        setDragPreview(gridPos);
-        
-      } else if (dragState.isResizing) {
-        const widget = widgets.find(w => w.id === dragState.widgetId);
-        if (!widget) return;
-
-        const deltaX = e.clientX - dragState.startX;
-        const deltaY = e.clientY - dragState.startY;
-
-        const newWidth = Math.max(200, dragState.startWidth + deltaX);
-        const newHeight = Math.max(150, dragState.startHeight + deltaY);
-
-        setWidgets(prev => prev.map(w => 
-          w.id === dragState.widgetId 
-            ? { ...w, width: newWidth, height: newHeight }
-            : w
-        ));
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (dragState.isDragging && dragState.widgetId && dragPreview) {
-        // Check if target position is free
-        if (!isGridPositionOccupied(dragPreview.gridX, dragPreview.gridY, dragState.widgetId)) {
-          // Move widget to new grid position
-          setWidgets(prev => prev.map(w => 
-            w.id === dragState.widgetId 
-              ? { ...w, gridX: dragPreview.gridX, gridY: dragPreview.gridY }
-              : w
-          ));
-        }
-        // If position is occupied, widget stays in original position (no change needed)
-      }
-
-      setDragPreview(null);
-      setDragState({
-        isDragging: false,
-        isResizing: false,
-        widgetId: null,
-        startX: 0,
-        startY: 0,
-        startWidth: 0,
-        startHeight: 0,
-        offsetX: 0,
-        offsetY: 0
-      });
-    };
-
-    if (dragState.isDragging || dragState.isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = 'none';
-      document.body.style.cursor = dragState.isDragging ? 'move' : 'nw-resize';
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
-    };
-  }, [dragState, widgets, dragPreview]);
+  }, [widgets, layouts, nextId]);
 
   const addWidget = (type: Widget['type']) => {
-    const newZIndex = maxZIndex + 1;
     const titleMap = {
       'notes': 'Notes',
       'todo': 'List',
       'links': 'Links',
       'rss': 'RSS Feed'
     };
-
-    const gridPos = findNextGridPosition();
 
     const newWidget: Widget = {
       id: String(nextId),
@@ -302,84 +152,48 @@ export default function App() {
       content: type === 'notes' ? { text: '' } : 
                type === 'links' ? { links: [] } : 
                type === 'rss' ? { url: '', items: [] } :
-               { todos: [] },
-      gridX: gridPos.gridX,
-      gridY: gridPos.gridY,
-      width: WIDGET_WIDTH,
-      height: WIDGET_HEIGHT,
-      zIndex: newZIndex
+               { todos: [] }
     };
+
+    // Find a good position for the new widget
+    const newLayoutItem: LayoutItem = {
+      i: String(nextId),
+      x: 0,
+      y: 0,
+      w: 4,
+      h: 6
+    };
+
     setWidgets([...widgets, newWidget]);
+    setLayouts(prev => ({
+      ...prev,
+      lg: [...(prev.lg || []), newLayoutItem],
+      md: [...(prev.md || []), { ...newLayoutItem, w: 6 }],
+      sm: [...(prev.sm || []), { ...newLayoutItem, w: 6 }]
+    }));
     setNextId(nextId + 1);
-    setMaxZIndex(newZIndex);
     setShowAddMenu(false);
   };
 
   const removeWidget = (id: string) => {
     setWidgets(widgets.filter(w => w.id !== id));
+    setLayouts(prev => ({
+      lg: (prev.lg || []).filter(item => item.i !== id),
+      md: (prev.md || []).filter(item => item.i !== id),
+      sm: (prev.sm || []).filter(item => item.i !== id)
+    }));
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  const bringToFront = (id: string) => {
-    const newZIndex = maxZIndex + 1;
-    updateWidget(id, { zIndex: newZIndex });
-    setMaxZIndex(newZIndex);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent, widgetId: string, isResize = false) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    bringToFront(widgetId);
-
-    const widget = widgets.find(w => w.id === widgetId);
-    if (!widget) return;
-
-    const pixelPos = gridToPixel(widget.gridX, widget.gridY);
-
-    // Calculate offset from mouse to widget top-left corner
-    const offsetX = e.clientX - pixelPos.x;
-    const offsetY = e.clientY - pixelPos.y;
-
-    setDragState({
-      isDragging: !isResize,
-      isResizing: isResize,
-      widgetId,
-      startX: e.clientX,
-      startY: e.clientY,
-      startWidth: widget.width,
-      startHeight: widget.height,
-      offsetX,
-      offsetY
-    });
-  };
-
-  const handleMenuMouseEnter = () => {
-    if (menuTimeoutRef.current) {
-      clearTimeout(menuTimeoutRef.current);
-      menuTimeoutRef.current = null;
-    }
-    setShowAddMenu(true);
-  };
-
-  const handleMenuMouseLeave = () => {
-    menuTimeoutRef.current = setTimeout(() => {
-      setShowAddMenu(false);
-    }, 150);
-  };
-
-  // Calculate bottom padding based on widget positions
-  const getBottomPadding = () => {
-    if (widgets.length === 0) return 100;
-    const maxGridY = Math.max(...widgets.map(w => w.gridY));
-    return GRID_START_Y + (maxGridY + 1) * GRID_CELL_HEIGHT + 100;
+  const onLayoutChange = (layout: LayoutItem[], layouts: { [key: string]: LayoutItem[] }) => {
+    setLayouts(layouts);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
@@ -389,20 +203,22 @@ export default function App() {
             <h1 className="text-xl font-semibold">PersonalTab</h1>
           </div>
 
-          <div
-            className="relative"
-            onMouseEnter={handleMenuMouseEnter}
-            onMouseLeave={handleMenuMouseLeave}
-          >
-            <Button variant="outline" size="sm" className="w-9 h-9 p-0">
+          <div className="relative">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-9 h-9 p-0"
+              onMouseEnter={() => setShowAddMenu(true)}
+              onMouseLeave={() => setTimeout(() => setShowAddMenu(false), 150)}
+            >
               <Plus className="w-4 h-4" />
             </Button>
 
             {showAddMenu && (
               <div 
                 className="absolute right-full top-0 mr-2 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
-                onMouseEnter={handleMenuMouseEnter}
-                onMouseLeave={handleMenuMouseLeave}
+                onMouseEnter={() => setShowAddMenu(true)}
+                onMouseLeave={() => setShowAddMenu(false)}
               >
                 <Button
                   variant="ghost"
@@ -442,82 +258,35 @@ export default function App() {
         </div>
       </div>
 
-      <div 
-        className="relative p-4" 
-        style={{ paddingBottom: `${getBottomPadding()}px` }}
-      >
-        {/* Grid visualization during drag */}
-        {dragState.isDragging && (
-          <div className="absolute inset-0 pointer-events-none z-10">
-            {/* Draw grid cells */}
-            {Array.from({ length: 20 }, (_, row) => 
-              Array.from({ length: GRID_COLS }, (_, col) => {
-                const pixelPos = gridToPixel(col, row);
-                const isOccupied = isGridPositionOccupied(col, row, dragState.widgetId);
-                const isPreview = dragPreview && dragPreview.gridX === col && dragPreview.gridY === row;
-                
-                return (
-                  <div
-                    key={`${col}-${row}`}
-                    className={`absolute border-2 border-dashed rounded-lg transition-colors ${
-                      isPreview 
-                        ? isOccupied 
-                          ? 'border-red-400 bg-red-100/30' 
-                          : 'border-green-400 bg-green-100/30'
-                        : 'border-gray-300 bg-gray-100/20'
-                    }`}
-                    style={{
-                      left: pixelPos.x,
-                      top: pixelPos.y,
-                      width: WIDGET_WIDTH,
-                      height: WIDGET_HEIGHT
-                    }}
-                  >
-                    {isPreview && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className={`px-2 py-1 rounded text-xs font-medium text-white ${
-                          isOccupied ? 'bg-red-500' : 'bg-green-500'
-                        }`}>
-                          {isOccupied ? 'Occupied' : 'Drop here'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {widgets.map((widget) => {
-          const pixelPos = gridToPixel(widget.gridX, widget.gridY);
-          return (
-            <div
-              key={widget.id}
-              className="absolute"
-              style={{
-                left: pixelPos.x,
-                top: pixelPos.y,
-                width: widget.width,
-                height: widget.height,
-                zIndex: widget.zIndex,
-                opacity: dragState.isDragging && dragState.widgetId === widget.id ? 0.5 : 1
-              }}
-            >
+      <div className="p-4">
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={layouts}
+          onLayoutChange={onLayoutChange}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={60}
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
+          isDraggable={true}
+          isResizable={true}
+          compactType="vertical"
+          preventCollision={false}
+        >
+          {widgets.map((widget) => (
+            <div key={widget.id}>
               <WidgetCard
                 widget={widget}
                 onRemove={removeWidget}
                 onUpdate={updateWidget}
-                onMouseDown={handleMouseDown}
                 editingTitle={editingTitle}
                 setEditingTitle={setEditingTitle}
                 editTitleValue={editTitleValue}
                 setEditTitleValue={setEditTitleValue}
-                isDragging={dragState.isDragging && dragState.widgetId === widget.id}
               />
             </div>
-          );
-        })}
+          ))}
+        </ResponsiveGridLayout>
       </div>
     </div>
   );
@@ -527,24 +296,20 @@ interface WidgetCardProps {
   widget: Widget;
   onRemove: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Widget>) => void;
-  onMouseDown: (e: React.MouseEvent, widgetId: string, isResize?: boolean) => void;
   editingTitle: string | null;
   setEditingTitle: (id: string | null) => void;
   editTitleValue: string;
   setEditTitleValue: (value: string) => void;
-  isDragging: boolean;
 }
 
 function WidgetCard({
   widget,
   onRemove,
   onUpdate,
-  onMouseDown,
   editingTitle,
   setEditingTitle,
   editTitleValue,
-  setEditTitleValue,
-  isDragging
+  setEditTitleValue
 }: WidgetCardProps) {
   const startEdit = () => {
     setEditingTitle(widget.id);
@@ -559,18 +324,10 @@ function WidgetCard({
   };
 
   return (
-    <Card className={`h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 transition-all relative ${
-      isDragging ? 'border-blue-400 shadow-xl scale-105' : 'hover:border-blue-200'
-    }`}>
-      {/* Title Bar - Draggable */}
-      <CardHeader
-        className="flex-shrink-0 pb-2 cursor-move"
-        onMouseDown={(e) => onMouseDown(e, widget.id, false)}
-      >
+    <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
+      <CardHeader className="flex-shrink-0 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
-            <GripVertical className="w-4 h-4 text-gray-400" />
-
             {editingTitle === widget.id ? (
               <div className="flex items-center gap-1 flex-1">
                 <Input
@@ -581,7 +338,6 @@ function WidgetCard({
                     if (e.key === 'Enter') saveEdit();
                     if (e.key === 'Escape') setEditingTitle(null);
                   }}
-                  onMouseDown={(e) => e.stopPropagation()}
                   autoFocus
                 />
                 <Button size="sm" variant="ghost" onClick={saveEdit}>
@@ -609,88 +365,36 @@ function WidgetCard({
         </div>
       </CardHeader>
 
-      {/* Content Area */}
       <CardContent className="flex-1 overflow-hidden pt-0">
         {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
       </CardContent>
-
-      {/* Resize Handle - Bottom Right Corner */}
-      <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-nw-resize bg-gray-400 opacity-0 hover:opacity-60 transition-opacity"
-        style={{
-          background: 'linear-gradient(-45deg, transparent 30%, #9ca3af 30%, #9ca3af 70%, transparent 70%)',
-          clipPath: 'polygon(100% 0, 100% 100%, 0 100%)'
-        }}
-        onMouseDown={(e) => onMouseDown(e, widget.id, true)}
-      />
     </Card>
   );
 }
 
 function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string, updates: Partial<Widget>) => void }) {
   const [content, setContent] = useState(widget.content.text || '');
-  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setContent(widget.content.text || '');
-    if (editorRef.current) {
-      editorRef.current.innerHTML = formatTextToHTML(widget.content.text || '');
-    }
   }, [widget.content.text]);
 
-  const formatTextToHTML = (text: string) => {
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br>');
-  };
-
-  const extractTextFromHTML = (html: string) => {
-    return html
-      .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
-      .replace(/<em>(.*?)<\/em>/g, '*$1*')
-      .replace(/<br>/g, '\n')
-      .replace(/<div>/g, '\n')
-      .replace(/<\/div>/g, '')
-      .replace(/&nbsp;/g, ' ');
-  };
-
-  const handleInput = () => {
-    if (editorRef.current) {
-      const textContent = extractTextFromHTML(editorRef.current.innerHTML);
-      setContent(textContent);
-      onUpdate(widget.id, { content: { text: textContent } });
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    const isCtrl = e.ctrlKey || e.metaKey;
-
-    if (isCtrl && (e.key === 'b' || e.key === 'B')) {
-      e.preventDefault();
-      document.execCommand('bold', false);
-      handleInput();
-    } else if (isCtrl && (e.key === 'i' || e.key === 'I')) {
-      e.preventDefault();
-      document.execCommand('italic', false);
-      handleInput();
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setContent(newContent);
+    onUpdate(widget.id, { content: { text: newContent } });
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div
-        ref={editorRef}
-        contentEditable
-        className="flex-1 overflow-y-auto text-sm p-3 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        style={{ minHeight: '100px' }}
-        suppressContentEditableWarning={true}
+    <div className="h-full">
+      <Textarea
+        value={content}
+        onChange={handleChange}
         placeholder="Start typing your notes..."
+        className="h-full resize-none border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
       />
     </div>
   );
@@ -761,7 +465,6 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
 
   return (
     <div className="h-full flex flex-col">
-      {/* Add input at the top */}
       <div className="flex items-center gap-2 mb-3">
         <Input
           value={newTodo}
@@ -775,7 +478,6 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
         <Plus className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={addTodo} />
       </div>
 
-      {/* Todo list */}
       <div className="flex-1 overflow-y-auto space-y-2">
         {todos.map((todo) => (
           <div key={todo.id} className="flex items-center gap-2 group">
@@ -839,7 +541,6 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
 
   return (
     <div className="h-full flex flex-col">
-      {/* Add input at the top */}
       <div className="flex items-center gap-2 mb-3">
         <Input
           value={newUrl}
@@ -853,7 +554,6 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
         <Plus className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={addLink} />
       </div>
 
-      {/* Links list */}
       <div className="flex-1 overflow-y-auto space-y-1">
         {links.map((link) => (
           <div key={link.id} className="flex items-center gap-2 p-2 rounded bg-gray-50 group">
@@ -940,7 +640,6 @@ function RSSWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string
 
   return (
     <div className="h-full flex flex-col">
-      {/* RSS URL input */}
       <div className="flex items-center gap-2 mb-3">
         <Input
           value={url}
@@ -966,14 +665,12 @@ function RSSWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string
         </Button>
       </div>
 
-      {/* Error message */}
       {error && (
         <div className="text-xs text-red-500 mb-2 p-2 bg-red-50 rounded">
           {error}
         </div>
       )}
 
-      {/* RSS items */}
       <div className="flex-1 overflow-y-auto space-y-2">
         {items.length === 0 && !loading && !error && (
           <div className="text-sm text-gray-500 text-center py-4">
