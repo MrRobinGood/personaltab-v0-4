@@ -47,7 +47,7 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-v2';
+const STORAGE_KEY = 'personaltab-data-v3';
 const GRID_COLS = 3;
 const GRID_CELL_WIDTH = 330;
 const GRID_CELL_HEIGHT = 420;
@@ -118,12 +118,8 @@ export default function App() {
     return { gridX: 0, gridY: maxRow + 1 };
   };
 
-  const initializeDefaultWidgets = () => {
-    // Clear any existing data first
-    localStorage.removeItem('personaltab-data');
-    localStorage.removeItem('personaltab-data-v1');
-    
-    const defaultWidgets: Widget[] = [
+  const createDefaultWidgets = (): Widget[] => {
+    return [
       {
         id: '1',
         type: 'notes',
@@ -158,42 +154,58 @@ export default function App() {
         zIndex: 1
       }
     ];
-    setWidgets(defaultWidgets);
-    setNextId(4);
-    setMaxZIndex(1);
   };
 
+  // Initialize widgets on first load
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
+    console.log('Initializing widgets...');
+    
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      
+      if (saved) {
         const data = JSON.parse(saved);
+        console.log('Found saved data:', data);
+        
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
-          // Ensure all widgets have grid positions
+          // Validate and fix any widgets missing grid positions
           const validatedWidgets = data.widgets.map((widget: any) => ({
             ...widget,
-            gridX: widget.gridX ?? 0,
-            gridY: widget.gridY ?? 0,
-            width: widget.width ?? WIDGET_WIDTH,
-            height: widget.height ?? WIDGET_HEIGHT
+            gridX: typeof widget.gridX === 'number' ? widget.gridX : 0,
+            gridY: typeof widget.gridY === 'number' ? widget.gridY : 0,
+            width: widget.width || WIDGET_WIDTH,
+            height: widget.height || WIDGET_HEIGHT
           }));
+          
+          console.log('Setting validated widgets:', validatedWidgets);
           setWidgets(validatedWidgets);
           setNextId(data.nextId || validatedWidgets.length + 1);
           setMaxZIndex(data.maxZIndex || 1);
-        } else {
-          initializeDefaultWidgets();
+          return;
         }
-      } catch (error) {
-        console.error('Error loading saved data:', error);
-        initializeDefaultWidgets();
       }
-    } else {
-      initializeDefaultWidgets();
+      
+      // No valid saved data, create defaults
+      console.log('No valid saved data, creating defaults');
+      const defaultWidgets = createDefaultWidgets();
+      setWidgets(defaultWidgets);
+      setNextId(4);
+      setMaxZIndex(1);
+      
+    } catch (error) {
+      console.error('Error loading saved data:', error);
+      // On error, create defaults
+      const defaultWidgets = createDefaultWidgets();
+      setWidgets(defaultWidgets);
+      setNextId(4);
+      setMaxZIndex(1);
     }
   }, []);
 
+  // Save widgets whenever they change
   useEffect(() => {
     if (widgets.length > 0) {
+      console.log('Saving widgets:', widgets);
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, nextId, maxZIndex }));
     }
   }, [widgets, nextId, maxZIndex]);
