@@ -66,10 +66,10 @@ export default function App() {
     startY: number;
     startWidth: number;
     startHeight: number;
-    initialX: number;
-    initialY: number;
     offsetX: number;
     offsetY: number;
+    originalX: number;
+    originalY: number;
   }>({
     isDragging: false,
     isResizing: false,
@@ -78,67 +78,30 @@ export default function App() {
     startY: 0,
     startWidth: 0,
     startHeight: 0,
-    initialX: 0,
-    initialY: 0,
     offsetX: 0,
-    offsetY: 0
+    offsetY: 0,
+    originalX: 0,
+    originalY: 0
   });
   const [maxZIndex, setMaxZIndex] = useState(1);
-  const [previewPosition, setPreviewPosition] = useState<{x: number, y: number} | null>(null);
+  const [dragPreview, setDragPreview] = useState<{x: number, y: number} | null>(null);
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Snap to grid function
   const snapToGrid = (value: number) => {
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   };
 
-  // Check if two rectangles overlap
-  const rectanglesOverlap = (rect1: any, rect2: any) => {
-    return !(rect1.x >= rect2.x + rect2.width || 
-             rect2.x >= rect1.x + rect1.width || 
-             rect1.y >= rect2.y + rect2.height || 
-             rect2.y >= rect1.y + rect1.height);
-  };
-
-  // Find a free position for a widget
-  const findFreePosition = (excludeId: string, preferredX: number, preferredY: number, width: number, height: number) => {
-    const otherWidgets = widgets.filter(w => w.id !== excludeId);
-    
-    // Snap preferred position to grid
-    const snappedX = Math.max(0, snapToGrid(preferredX));
-    const snappedY = Math.max(0, snapToGrid(preferredY));
-    
-    // Check if preferred position is free
-    const testRect = { x: snappedX, y: snappedY, width, height };
-    const hasCollision = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
-    
-    if (!hasCollision) {
-      return { x: snappedX, y: snappedY };
-    }
-    
-    // Find nearest free position in a grid pattern
-    const stepX = 330; // widget width + margin
-    const stepY = 420; // widget height + margin
-    const startX = 60;
-    const startY = 60;
-    
-    for (let row = 0; row < 20; row++) {
-      for (let col = 0; col < 10; col++) {
-        const x = startX + col * stepX;
-        const y = startY + row * stepY;
-        
-        const gridRect = { x, y, width, height };
-        const isOccupied = otherWidgets.some(widget => rectanglesOverlap(gridRect, widget));
-        
-        if (!isOccupied) {
-          return { x, y };
-        }
-      }
-    }
-    
-    // Fallback
-    return { x: snappedX, y: snappedY };
+  // Check if position is valid (no overlaps)
+  const isPositionValid = (x: number, y: number, width: number, height: number, excludeId: string) => {
+    const testRect = { x, y, width, height };
+    return !widgets.some(widget => {
+      if (widget.id === excludeId) return false;
+      return !(testRect.x >= widget.x + widget.width || 
+               widget.x >= testRect.x + testRect.width || 
+               testRect.y >= widget.y + widget.height || 
+               widget.y >= testRect.y + testRect.height);
+    });
   };
 
   const initializeDefaultWidgets = () => {
@@ -216,25 +179,18 @@ export default function App() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragState.isDragging && !dragState.isResizing) return;
 
-      const widget = widgets.find(w => w.id === dragState.widgetId);
-      if (!widget) return;
-
       if (dragState.isDragging) {
-        // Calculate new position based on mouse movement
-        const newX = e.clientX - dragState.offsetX;
-        const newY = e.clientY - dragState.offsetY;
+        // Calculate where the widget would be positioned
+        const newX = Math.max(0, e.clientX - dragState.offsetX);
+        const newY = Math.max(0, e.clientY - dragState.offsetY);
         
-        // Find the best position (snapped and collision-free)
-        const bestPosition = findFreePosition(dragState.widgetId!, newX, newY, widget.width, widget.height);
-        setPreviewPosition(bestPosition);
-
-        // Update widget position in real-time (for smooth dragging)
-        setWidgets(prev => prev.map(w => 
-          w.id === dragState.widgetId 
-            ? { ...w, x: newX, y: newY }
-            : w
-        ));
+        // Update preview position (always show where mouse is)
+        setDragPreview({ x: newX, y: newY });
+        
       } else if (dragState.isResizing) {
+        const widget = widgets.find(w => w.id === dragState.widgetId);
+        if (!widget) return;
+
         const deltaX = e.clientX - dragState.startX;
         const deltaY = e.clientY - dragState.startY;
 
@@ -250,16 +206,33 @@ export default function App() {
     };
 
     const handleMouseUp = () => {
-      if (dragState.isDragging && dragState.widgetId && previewPosition) {
-        // Apply the final snapped position
-        setWidgets(prev => prev.map(w => 
-          w.id === dragState.widgetId 
-            ? { ...w, x: previewPosition.x, y: previewPosition.y }
-            : w
-        ));
+      if (dragState.isDragging && dragState.widgetId && dragPreview) {
+        const widget = widgets.find(w => w.id === dragState.widgetId);
+        if (!widget) return;
+
+        // Snap to grid
+        const snappedX = snapToGrid(dragPreview.x);
+        const snappedY = snapToGrid(dragPreview.y);
+
+        // Check if the snapped position is valid
+        if (isPositionValid(snappedX, snappedY, widget.width, widget.height, dragState.widgetId)) {
+          // Position is valid, update widget
+          setWidgets(prev => prev.map(w => 
+            w.id === dragState.widgetId 
+              ? { ...w, x: snappedX, y: snappedY }
+              : w
+          ));
+        } else {
+          // Position is invalid, revert to original position
+          setWidgets(prev => prev.map(w => 
+            w.id === dragState.widgetId 
+              ? { ...w, x: dragState.originalX, y: dragState.originalY }
+              : w
+          ));
+        }
       }
 
-      setPreviewPosition(null);
+      setDragPreview(null);
       setDragState({
         isDragging: false,
         isResizing: false,
@@ -268,10 +241,10 @@ export default function App() {
         startY: 0,
         startWidth: 0,
         startHeight: 0,
-        initialX: 0,
-        initialY: 0,
         offsetX: 0,
-        offsetY: 0
+        offsetY: 0,
+        originalX: 0,
+        originalY: 0
       });
     };
 
@@ -288,7 +261,7 @@ export default function App() {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
-  }, [dragState, widgets, previewPosition]);
+  }, [dragState, widgets, dragPreview]);
 
   // Find the next available position for a new widget
   const findNextAvailablePosition = () => {
@@ -302,10 +275,7 @@ export default function App() {
         const x = startX + col * stepX;
         const y = startY + row * stepY;
         
-        const testRect = { x, y, width: WIDGET_WIDTH, height: WIDGET_HEIGHT };
-        const isOccupied = widgets.some(widget => rectanglesOverlap(testRect, widget));
-        
-        if (!isOccupied) {
+        if (isPositionValid(x, y, WIDGET_WIDTH, WIDGET_HEIGHT, '')) {
           return { x, y };
         }
       }
@@ -371,7 +341,7 @@ export default function App() {
     const widget = widgets.find(w => w.id === widgetId);
     if (!widget) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    // Calculate offset from mouse to widget top-left corner
     const offsetX = e.clientX - widget.x;
     const offsetY = e.clientY - widget.y;
 
@@ -383,10 +353,10 @@ export default function App() {
       startY: e.clientY,
       startWidth: widget.width,
       startHeight: widget.height,
-      initialX: widget.x,
-      initialY: widget.y,
       offsetX,
-      offsetY
+      offsetY,
+      originalX: widget.x,
+      originalY: widget.y
     });
   };
 
@@ -476,7 +446,6 @@ export default function App() {
       </div>
 
       <div 
-        ref={containerRef}
         className="relative p-4" 
         style={{ paddingBottom: `${getBottomPadding()}px` }}
       >
@@ -489,27 +458,34 @@ export default function App() {
                 linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px)
               `,
-              backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
-              top: '0',
-              left: '0'
+              backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`
             }}
           />
         )}
 
-        {/* Preview position indicator */}
-        {previewPosition && dragState.isDragging && (
+        {/* Drag preview */}
+        {dragPreview && dragState.isDragging && (
           <div
             className="absolute border-2 border-dashed border-blue-400 bg-blue-100/30 rounded-lg pointer-events-none z-40"
             style={{
-              left: previewPosition.x,
-              top: previewPosition.y,
+              left: dragPreview.x,
+              top: dragPreview.y,
               width: widgets.find(w => w.id === dragState.widgetId)?.width || WIDGET_WIDTH,
               height: widgets.find(w => w.id === dragState.widgetId)?.height || WIDGET_HEIGHT,
             }}
           >
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-                Drop here
+                {(() => {
+                  const widget = widgets.find(w => w.id === dragState.widgetId);
+                  if (!widget) return 'Drop here';
+                  
+                  const snappedX = snapToGrid(dragPreview.x);
+                  const snappedY = snapToGrid(dragPreview.y);
+                  const isValid = isPositionValid(snappedX, snappedY, widget.width, widget.height, dragState.widgetId);
+                  
+                  return isValid ? 'Drop here' : 'Invalid position';
+                })()}
               </div>
             </div>
           </div>
@@ -524,7 +500,8 @@ export default function App() {
               top: widget.y,
               width: widget.width,
               height: widget.height,
-              zIndex: widget.zIndex
+              zIndex: widget.zIndex,
+              opacity: dragState.isDragging && dragState.widgetId === widget.id ? 0.5 : 1
             }}
           >
             <WidgetCard
