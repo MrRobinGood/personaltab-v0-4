@@ -81,19 +81,19 @@ export default function App() {
 
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 6 },
-        { i: '2', x: 4, y: 0, w: 4, h: 6 },
-        { i: '3', x: 8, y: 0, w: 4, h: 6 }
+        { i: '1', x: 0, y: 0, w: 4, h: 7 },
+        { i: '2', x: 4, y: 0, w: 4, h: 7 },
+        { i: '3', x: 8, y: 0, w: 4, h: 7 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 6, h: 6 },
-        { i: '2', x: 6, y: 0, w: 6, h: 6 },
-        { i: '3', x: 0, y: 6, w: 6, h: 6 }
+        { i: '1', x: 0, y: 0, w: 6, h: 7 },
+        { i: '2', x: 6, y: 0, w: 6, h: 7 },
+        { i: '3', x: 0, y: 7, w: 6, h: 7 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 6, h: 6 },
-        { i: '2', x: 0, y: 6, w: 6, h: 6 },
-        { i: '3', x: 0, y: 12, w: 6, h: 6 }
+        { i: '1', x: 0, y: 0, w: 6, h: 7 },
+        { i: '2', x: 0, y: 7, w: 6, h: 7 },
+        { i: '3', x: 0, y: 14, w: 6, h: 7 }
       ]
     };
 
@@ -161,7 +161,7 @@ export default function App() {
       x: 0,
       y: 0,
       w: 4,
-      h: 6
+      h: 7
     };
 
     setWidgets([...widgets, newWidget]);
@@ -258,16 +258,16 @@ export default function App() {
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-2">
         <ResponsiveGridLayout
           className="layout"
           layouts={layouts}
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
-          rowHeight={60}
-          margin={[16, 16]}
-          containerPadding={[0, 0]}
+          rowHeight={50}
+          margin={[8, 8]}
+          containerPadding={[8, 8]}
           isDraggable={true}
           isResizable={true}
           compactType="vertical"
