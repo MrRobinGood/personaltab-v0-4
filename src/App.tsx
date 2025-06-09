@@ -51,6 +51,7 @@ const STORAGE_KEY = 'personaltab-data';
 const WIDGET_WIDTH = 310;
 const WIDGET_HEIGHT = 400;
 const WIDGET_MARGIN = 20;
+const SNAP_THRESHOLD = 15; // Distance for snapping to avoid overlaps
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -68,6 +69,8 @@ export default function App() {
     startHeight: number;
     initialX: number;
     initialY: number;
+    currentX: number;
+    currentY: number;
   }>({
     isDragging: false,
     isResizing: false,
@@ -77,9 +80,12 @@ export default function App() {
     startWidth: 0,
     startHeight: 0,
     initialX: 0,
-    initialY: 0
+    initialY: 0,
+    currentX: 0,
+    currentY: 0
   });
   const [maxZIndex, setMaxZIndex] = useState(1);
+  const [collisionPreview, setCollisionPreview] = useState<{x: number, y: number} | null>(null);
 
   const initializeDefaultWidgets = () => {
     const defaultWidgets: Widget[] = [
@@ -150,14 +156,14 @@ export default function App() {
 
   // Check if two rectangles overlap
   const rectanglesOverlap = (rect1: any, rect2: any) => {
-    return !(rect1.x + rect1.width <= rect2.x || 
-             rect2.x + rect2.width <= rect1.x || 
-             rect1.y + rect1.height <= rect2.y || 
-             rect2.y + rect2.height <= rect1.y);
+    return !(rect1.x >= rect2.x + rect2.width || 
+             rect2.x >= rect1.x + rect1.width || 
+             rect1.y >= rect2.y + rect2.height || 
+             rect2.y >= rect1.y + rect1.height);
   };
 
-  // Find a safe position that doesn't overlap with existing widgets
-  const findSafePosition = (movingWidgetId: string, targetX: number, targetY: number, targetWidth: number, targetHeight: number) => {
+  // Find the best position to avoid overlaps with smart snapping
+  const findBestPosition = (movingWidgetId: string, targetX: number, targetY: number, targetWidth: number, targetHeight: number) => {
     const movingRect = {
       x: targetX,
       y: targetY,
@@ -172,47 +178,71 @@ export default function App() {
     const hasCollision = otherWidgets.some(widget => rectanglesOverlap(movingRect, widget));
     
     if (!hasCollision) {
-      return { x: targetX, y: targetY };
+      return { x: targetX, y: targetY, hasCollision: false };
     }
 
-    // If there's a collision, try to find a safe position
-    // First, try moving down
-    let safeY = targetY;
-    let attempts = 0;
-    const maxAttempts = 20;
+    // Try to find a nearby position by nudging the widget
+    const nudgeDistance = 10;
+    const maxNudges = 5;
 
-    while (attempts < maxAttempts) {
-      const testRect = { ...movingRect, y: safeY };
-      const stillColliding = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
-      
-      if (!stillColliding) {
-        return { x: targetX, y: safeY };
+    // Try nudging in different directions
+    const directions = [
+      { dx: 0, dy: nudgeDistance },     // down
+      { dx: nudgeDistance, dy: 0 },     // right
+      { dx: 0, dy: -nudgeDistance },    // up
+      { dx: -nudgeDistance, dy: 0 },    // left
+      { dx: nudgeDistance, dy: nudgeDistance },   // down-right
+      { dx: -nudgeDistance, dy: nudgeDistance },  // down-left
+    ];
+
+    for (const direction of directions) {
+      for (let i = 1; i <= maxNudges; i++) {
+        const testX = Math.max(0, targetX + direction.dx * i);
+        const testY = Math.max(0, targetY + direction.dy * i);
+        
+        const testRect = { x: testX, y: testY, width: targetWidth, height: targetHeight };
+        const stillColliding = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
+        
+        if (!stillColliding) {
+          return { x: testX, y: testY, hasCollision: false };
+        }
       }
-      
-      // Move down by the height of the widget plus margin
-      safeY += targetHeight + WIDGET_MARGIN;
-      attempts++;
     }
 
-    // If we can't find a safe position by moving down, try moving right
-    let safeX = targetX + targetWidth + WIDGET_MARGIN;
-    safeY = targetY;
-    attempts = 0;
+    // If nudging doesn't work, find a completely free area
+    return findCompletelyFreePosition(movingWidgetId, targetWidth, targetHeight);
+  };
 
-    while (attempts < maxAttempts) {
-      const testRect = { ...movingRect, x: safeX, y: safeY };
-      const stillColliding = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
-      
-      if (!stillColliding) {
-        return { x: safeX, y: safeY };
+  // Find a completely free position when nudging fails
+  const findCompletelyFreePosition = (movingWidgetId: string, width: number, height: number) => {
+    const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
+    
+    // Try positions in a grid pattern
+    const startX = 60;
+    const startY = 30;
+    const stepX = width + WIDGET_MARGIN;
+    const stepY = height + WIDGET_MARGIN;
+    
+    for (let row = 0; row < 10; row++) {
+      for (let col = 0; col < 5; col++) {
+        const x = startX + col * stepX;
+        const y = startY + row * stepY;
+        
+        const testRect = { x, y, width, height };
+        const isOccupied = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
+        
+        if (!isOccupied) {
+          return { x, y, hasCollision: true }; // Mark as collision since we had to move it
+        }
       }
-      
-      safeX += targetWidth + WIDGET_MARGIN;
-      attempts++;
     }
-
-    // If all else fails, return the original position
-    return { x: targetX, y: targetY };
+    
+    // Fallback to a position far to the right
+    return { 
+      x: startX + 5 * stepX, 
+      y: startY,
+      hasCollision: true
+    };
   };
 
   useEffect(() => {
@@ -229,7 +259,23 @@ export default function App() {
         const newX = Math.max(0, dragState.initialX + deltaX);
         const newY = Math.max(0, dragState.initialY + deltaY);
 
-        // Update position immediately during drag (no collision detection during drag)
+        // Update current position for real-time collision preview
+        setDragState(prev => ({
+          ...prev,
+          currentX: newX,
+          currentY: newY
+        }));
+
+        // Check for potential collision and show preview
+        const bestPosition = findBestPosition(dragState.widgetId!, newX, newY, widget.width, widget.height);
+        
+        if (bestPosition.hasCollision) {
+          setCollisionPreview({ x: bestPosition.x, y: bestPosition.y });
+        } else {
+          setCollisionPreview(null);
+        }
+
+        // Update widget position immediately during drag
         updateWidget(dragState.widgetId!, {
           x: newX,
           y: newY
@@ -249,19 +295,27 @@ export default function App() {
     };
 
     const handleMouseUp = () => {
-      // Apply collision detection only when drag ends
       if (dragState.isDragging && dragState.widgetId) {
         const widget = widgets.find(w => w.id === dragState.widgetId);
         if (widget) {
-          const safePosition = findSafePosition(dragState.widgetId, widget.x, widget.y, widget.width, widget.height);
-          if (safePosition.x !== widget.x || safePosition.y !== widget.y) {
-            updateWidget(dragState.widgetId, {
-              x: safePosition.x,
-              y: safePosition.y
-            });
-          }
+          // Apply final collision detection and positioning
+          const bestPosition = findBestPosition(
+            dragState.widgetId, 
+            dragState.currentX, 
+            dragState.currentY, 
+            widget.width, 
+            widget.height
+          );
+          
+          updateWidget(dragState.widgetId, {
+            x: bestPosition.x,
+            y: bestPosition.y
+          });
         }
       }
+
+      // Clear collision preview
+      setCollisionPreview(null);
 
       setDragState({
         isDragging: false,
@@ -272,7 +326,9 @@ export default function App() {
         startWidth: 0,
         startHeight: 0,
         initialX: 0,
-        initialY: 0
+        initialY: 0,
+        currentX: 0,
+        currentY: 0
       });
     };
 
@@ -380,7 +436,9 @@ export default function App() {
       startWidth: widget.width,
       startHeight: widget.height,
       initialX: widget.x,
-      initialY: widget.y
+      initialY: widget.y,
+      currentX: widget.x,
+      currentY: widget.y
     });
   };
 
@@ -445,6 +503,29 @@ export default function App() {
       </div>
 
       <div className="p-4 relative">
+        {/* Collision Preview Indicator */}
+        {collisionPreview && (
+          <div
+            className="absolute border-2 border-dashed border-blue-400 bg-blue-100/50 rounded-lg pointer-events-none z-40"
+            style={{
+              left: collisionPreview.x,
+              top: collisionPreview.y,
+              width: dragState.isResizing ? 
+                widgets.find(w => w.id === dragState.widgetId)?.width || WIDGET_WIDTH : 
+                WIDGET_WIDTH,
+              height: dragState.isResizing ? 
+                widgets.find(w => w.id === dragState.widgetId)?.height || WIDGET_HEIGHT : 
+                WIDGET_HEIGHT,
+            }}
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+                Will move here
+              </div>
+            </div>
+          </div>
+        )}
+
         {widgets.map((widget) => (
           <div
             key={widget.id}
@@ -466,6 +547,7 @@ export default function App() {
               setEditingTitle={setEditingTitle}
               editTitleValue={editTitleValue}
               setEditTitleValue={setEditTitleValue}
+              isDragging={dragState.isDragging && dragState.widgetId === widget.id}
             />
           </div>
         ))}
@@ -483,6 +565,7 @@ interface WidgetCardProps {
   setEditingTitle: (id: string | null) => void;
   editTitleValue: string;
   setEditTitleValue: (value: string) => void;
+  isDragging: boolean;
 }
 
 function WidgetCard({
@@ -493,7 +576,8 @@ function WidgetCard({
   editingTitle,
   setEditingTitle,
   editTitleValue,
-  setEditTitleValue
+  setEditTitleValue,
+  isDragging
 }: WidgetCardProps) {
   const startEdit = () => {
     setEditingTitle(widget.id);
@@ -508,7 +592,9 @@ function WidgetCard({
   };
 
   return (
-    <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-colors relative">
+    <Card className={`h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 transition-all relative ${
+      isDragging ? 'border-blue-400 shadow-xl scale-105' : 'hover:border-blue-200'
+    }`}>
       {/* Title Bar - Draggable */}
       <CardHeader
         className="flex-shrink-0 pb-2 cursor-move"
