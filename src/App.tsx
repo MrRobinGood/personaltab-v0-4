@@ -47,7 +47,7 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-v2'; // Changed key to force refresh
+const STORAGE_KEY = 'personaltab-data-v2';
 const GRID_SIZE = 20;
 const WIDGET_WIDTH = 310;
 const WIDGET_HEIGHT = 400;
@@ -86,6 +86,7 @@ export default function App() {
   });
   const [maxZIndex, setMaxZIndex] = useState(1);
   const [snapPreview, setSnapPreview] = useState<{x: number, y: number} | null>(null);
+  const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Snap to grid function
   const snapToGrid = (value: number) => {
@@ -103,7 +104,7 @@ export default function App() {
         type: 'notes',
         title: 'Notes',
         content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.' },
-        x: 60,  // First position
+        x: 60,
         y: 60,
         width: 310,
         height: 400,
@@ -114,7 +115,7 @@ export default function App() {
         type: 'todo',
         title: 'List',
         content: { todos: [] },
-        x: 390, // Second position (60 + 310 + 20)
+        x: 390,
         y: 60,
         width: 310,
         height: 400,
@@ -125,7 +126,7 @@ export default function App() {
         type: 'links',
         title: 'Links',
         content: { links: [] },
-        x: 720, // Third position (390 + 310 + 20)
+        x: 720,
         y: 60,
         width: 310,
         height: 400,
@@ -350,8 +351,8 @@ export default function App() {
     const cols = 3;
     const startX = 60;
     const startY = 60;
-    const stepX = snapToGrid(WIDGET_WIDTH + WIDGET_MARGIN);
-    const stepY = snapToGrid(WIDGET_HEIGHT + WIDGET_MARGIN);
+    const stepX = 330; // 310 + 20 margin, properly aligned
+    const stepY = 420; // 400 + 20 margin, properly aligned
     
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < cols; col++) {
@@ -442,8 +443,22 @@ export default function App() {
     });
   };
 
+  const handleMenuMouseEnter = () => {
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current);
+      menuTimeoutRef.current = null;
+    }
+    setShowAddMenu(true);
+  };
+
+  const handleMenuMouseLeave = () => {
+    menuTimeoutRef.current = setTimeout(() => {
+      setShowAddMenu(false);
+    }, 150); // Small delay to allow moving to menu
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative pb-20">
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
@@ -455,15 +470,19 @@ export default function App() {
 
           <div
             className="relative"
-            onMouseEnter={() => setShowAddMenu(true)}
-            onMouseLeave={() => setShowAddMenu(false)}
+            onMouseEnter={handleMenuMouseEnter}
+            onMouseLeave={handleMenuMouseLeave}
           >
             <Button variant="outline" size="sm" className="w-9 h-9 p-0">
               <Plus className="w-4 h-4" />
             </Button>
 
             {showAddMenu && (
-              <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50">
+              <div 
+                className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
+                onMouseEnter={handleMenuMouseEnter}
+                onMouseLeave={handleMenuMouseLeave}
+              >
                 <Button
                   variant="ghost"
                   size="sm"
