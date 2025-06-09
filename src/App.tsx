@@ -48,10 +48,10 @@ interface RSSItem {
 }
 
 const STORAGE_KEY = 'personaltab-data';
+const GRID_SIZE = 20; // Grid snap size in pixels
 const WIDGET_WIDTH = 310;
 const WIDGET_HEIGHT = 400;
 const WIDGET_MARGIN = 20;
-const SNAP_THRESHOLD = 15; // Distance for snapping to avoid overlaps
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -85,7 +85,12 @@ export default function App() {
     currentY: 0
   });
   const [maxZIndex, setMaxZIndex] = useState(1);
-  const [collisionPreview, setCollisionPreview] = useState<{x: number, y: number} | null>(null);
+  const [snapPreview, setSnapPreview] = useState<{x: number, y: number} | null>(null);
+
+  // Snap to grid function
+  const snapToGrid = (value: number) => {
+    return Math.round(value / GRID_SIZE) * GRID_SIZE;
+  };
 
   const initializeDefaultWidgets = () => {
     const defaultWidgets: Widget[] = [
@@ -93,7 +98,7 @@ export default function App() {
         id: '1',
         type: 'notes',
         title: 'Notes',
-        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.\n\nUse Ctrl+B for bold and Ctrl+I for italic!' },
+        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.' },
         x: 60,
         y: 30,
         width: 310,
@@ -162,11 +167,15 @@ export default function App() {
              rect2.y >= rect1.y + rect1.height);
   };
 
-  // Find the best position to avoid overlaps with smart snapping
-  const findBestPosition = (movingWidgetId: string, targetX: number, targetY: number, targetWidth: number, targetHeight: number) => {
+  // Find the best snapped position to avoid overlaps
+  const findBestSnappedPosition = (movingWidgetId: string, targetX: number, targetY: number, targetWidth: number, targetHeight: number) => {
+    // First snap to grid
+    const snappedX = Math.max(0, snapToGrid(targetX));
+    const snappedY = Math.max(0, snapToGrid(targetY));
+    
     const movingRect = {
-      x: targetX,
-      y: targetY,
+      x: snappedX,
+      y: snappedY,
       width: targetWidth,
       height: targetHeight
     };
@@ -174,54 +183,55 @@ export default function App() {
     // Get all other widgets (excluding the one being moved)
     const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
     
-    // Check if the target position overlaps with any other widget
+    // Check if the snapped position overlaps with any other widget
     const hasCollision = otherWidgets.some(widget => rectanglesOverlap(movingRect, widget));
     
     if (!hasCollision) {
-      return { x: targetX, y: targetY, hasCollision: false };
+      return { x: snappedX, y: snappedY, hasCollision: false };
     }
 
-    // Try to find a nearby position by nudging the widget
-    const nudgeDistance = 10;
-    const maxNudges = 5;
+    // Try to find a nearby grid-aligned position
+    const gridSteps = Math.ceil(Math.max(targetWidth, targetHeight) / GRID_SIZE) + 2;
+    
+    // Try positions in expanding grid pattern
+    for (let step = 1; step <= gridSteps; step++) {
+      const directions = [
+        { dx: 0, dy: step * GRID_SIZE },     // down
+        { dx: step * GRID_SIZE, dy: 0 },     // right
+        { dx: 0, dy: -step * GRID_SIZE },    // up
+        { dx: -step * GRID_SIZE, dy: 0 },    // left
+        { dx: step * GRID_SIZE, dy: step * GRID_SIZE },   // down-right
+        { dx: -step * GRID_SIZE, dy: step * GRID_SIZE },  // down-left
+        { dx: step * GRID_SIZE, dy: -step * GRID_SIZE },  // up-right
+        { dx: -step * GRID_SIZE, dy: -step * GRID_SIZE }, // up-left
+      ];
 
-    // Try nudging in different directions
-    const directions = [
-      { dx: 0, dy: nudgeDistance },     // down
-      { dx: nudgeDistance, dy: 0 },     // right
-      { dx: 0, dy: -nudgeDistance },    // up
-      { dx: -nudgeDistance, dy: 0 },    // left
-      { dx: nudgeDistance, dy: nudgeDistance },   // down-right
-      { dx: -nudgeDistance, dy: nudgeDistance },  // down-left
-    ];
-
-    for (const direction of directions) {
-      for (let i = 1; i <= maxNudges; i++) {
-        const testX = Math.max(0, targetX + direction.dx * i);
-        const testY = Math.max(0, targetY + direction.dy * i);
+      for (const direction of directions) {
+        const testX = Math.max(0, snappedX + direction.dx);
+        const testY = Math.max(0, snappedY + direction.dy);
         
         const testRect = { x: testX, y: testY, width: targetWidth, height: targetHeight };
         const stillColliding = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
         
         if (!stillColliding) {
-          return { x: testX, y: testY, hasCollision: false };
+          return { x: testX, y: testY, hasCollision: true };
         }
       }
     }
 
-    // If nudging doesn't work, find a completely free area
-    return findCompletelyFreePosition(movingWidgetId, targetWidth, targetHeight);
+    // If no nearby position found, find a completely free grid-aligned area
+    return findCompletelyFreeGridPosition(movingWidgetId, targetWidth, targetHeight);
   };
 
-  // Find a completely free position when nudging fails
-  const findCompletelyFreePosition = (movingWidgetId: string, width: number, height: number) => {
+  // Find a completely free grid-aligned position
+  const findCompletelyFreeGridPosition = (movingWidgetId: string, width: number, height: number) => {
     const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
     
     // Try positions in a grid pattern
     const startX = 60;
     const startY = 30;
-    const stepX = width + WIDGET_MARGIN;
-    const stepY = height + WIDGET_MARGIN;
+    const stepX = snapToGrid(width + WIDGET_MARGIN);
+    const stepY = snapToGrid(height + WIDGET_MARGIN);
     
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < 5; col++) {
@@ -232,7 +242,7 @@ export default function App() {
         const isOccupied = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
         
         if (!isOccupied) {
-          return { x, y, hasCollision: true }; // Mark as collision since we had to move it
+          return { x, y, hasCollision: true };
         }
       }
     }
@@ -259,23 +269,18 @@ export default function App() {
         const newX = Math.max(0, dragState.initialX + deltaX);
         const newY = Math.max(0, dragState.initialY + deltaY);
 
-        // Update current position for real-time collision preview
+        // Update current position for real-time preview
         setDragState(prev => ({
           ...prev,
           currentX: newX,
           currentY: newY
         }));
 
-        // Check for potential collision and show preview
-        const bestPosition = findBestPosition(dragState.widgetId!, newX, newY, widget.width, widget.height);
-        
-        if (bestPosition.hasCollision) {
-          setCollisionPreview({ x: bestPosition.x, y: bestPosition.y });
-        } else {
-          setCollisionPreview(null);
-        }
+        // Show snap preview
+        const bestPosition = findBestSnappedPosition(dragState.widgetId!, newX, newY, widget.width, widget.height);
+        setSnapPreview({ x: bestPosition.x, y: bestPosition.y });
 
-        // Update widget position immediately during drag
+        // Update widget position immediately during drag (not snapped yet)
         updateWidget(dragState.widgetId!, {
           x: newX,
           y: newY
@@ -284,8 +289,8 @@ export default function App() {
         const deltaX = e.clientX - dragState.startX;
         const deltaY = e.clientY - dragState.startY;
 
-        const newWidth = Math.max(200, dragState.startWidth + deltaX);
-        const newHeight = Math.max(150, dragState.startHeight + deltaY);
+        const newWidth = Math.max(200, snapToGrid(dragState.startWidth + deltaX));
+        const newHeight = Math.max(150, snapToGrid(dragState.startHeight + deltaY));
 
         updateWidget(dragState.widgetId!, {
           width: newWidth,
@@ -298,8 +303,8 @@ export default function App() {
       if (dragState.isDragging && dragState.widgetId) {
         const widget = widgets.find(w => w.id === dragState.widgetId);
         if (widget) {
-          // Apply final collision detection and positioning
-          const bestPosition = findBestPosition(
+          // Apply final snapped positioning
+          const bestPosition = findBestSnappedPosition(
             dragState.widgetId, 
             dragState.currentX, 
             dragState.currentY, 
@@ -314,8 +319,8 @@ export default function App() {
         }
       }
 
-      // Clear collision preview
-      setCollisionPreview(null);
+      // Clear snap preview
+      setSnapPreview(null);
 
       setDragState({
         isDragging: false,
@@ -347,16 +352,18 @@ export default function App() {
     };
   }, [dragState, widgets]);
 
-  // Find the next available position for a new widget
-  const findNextAvailablePosition = () => {
+  // Find the next available grid-aligned position for a new widget
+  const findNextAvailableGridPosition = () => {
     const cols = 3;
     const startX = 60;
     const startY = 30;
+    const stepX = snapToGrid(WIDGET_WIDTH + WIDGET_MARGIN);
+    const stepY = snapToGrid(WIDGET_HEIGHT + WIDGET_MARGIN);
     
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < cols; col++) {
-        const x = startX + col * (WIDGET_WIDTH + WIDGET_MARGIN);
-        const y = startY + row * (WIDGET_HEIGHT + WIDGET_MARGIN);
+        const x = startX + col * stepX;
+        const y = startY + row * stepY;
         
         const testRect = { x, y, width: WIDGET_WIDTH, height: WIDGET_HEIGHT };
         const isOccupied = widgets.some(widget => rectanglesOverlap(testRect, widget));
@@ -369,7 +376,7 @@ export default function App() {
     
     return { 
       x: startX, 
-      y: startY + Math.ceil(widgets.length / cols) * (WIDGET_HEIGHT + WIDGET_MARGIN)
+      y: startY + Math.ceil(widgets.length / cols) * stepY
     };
   };
 
@@ -382,7 +389,7 @@ export default function App() {
       'rss': 'RSS Feed'
     };
 
-    const position = findNextAvailablePosition();
+    const position = findNextAvailableGridPosition();
 
     const newWidget: Widget = {
       id: String(nextId),
@@ -503,24 +510,34 @@ export default function App() {
       </div>
 
       <div className="p-4 relative">
-        {/* Collision Preview Indicator */}
-        {collisionPreview && (
-          <div
-            className="absolute border-2 border-dashed border-blue-400 bg-blue-100/50 rounded-lg pointer-events-none z-40"
+        {/* Grid visualization during drag */}
+        {dragState.isDragging && (
+          <div 
+            className="absolute inset-0 pointer-events-none z-10"
             style={{
-              left: collisionPreview.x,
-              top: collisionPreview.y,
-              width: dragState.isResizing ? 
-                widgets.find(w => w.id === dragState.widgetId)?.width || WIDGET_WIDTH : 
-                WIDGET_WIDTH,
-              height: dragState.isResizing ? 
-                widgets.find(w => w.id === dragState.widgetId)?.height || WIDGET_HEIGHT : 
-                WIDGET_HEIGHT,
+              backgroundImage: `
+                linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`
+            }}
+          />
+        )}
+
+        {/* Snap Preview Indicator */}
+        {snapPreview && dragState.isDragging && (
+          <div
+            className="absolute border-2 border-dashed border-blue-400 bg-blue-100/30 rounded-lg pointer-events-none z-40"
+            style={{
+              left: snapPreview.x,
+              top: snapPreview.y,
+              width: widgets.find(w => w.id === dragState.widgetId)?.width || WIDGET_WIDTH,
+              height: widgets.find(w => w.id === dragState.widgetId)?.height || WIDGET_HEIGHT,
             }}
           >
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-                Will move here
+                Snap here
               </div>
             </div>
           </div>
@@ -715,11 +732,6 @@ function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
 
   return (
     <div className="h-full flex flex-col">
-      <div className="text-xs text-gray-500 mb-2 flex items-center gap-2">
-        <span>Ctrl+B for <strong>bold</strong></span>
-        <span>•</span>
-        <span>Ctrl+I for <em>italic</em></span>
-      </div>
       <div
         ref={editorRef}
         contentEditable
