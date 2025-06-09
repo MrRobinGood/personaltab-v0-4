@@ -47,8 +47,8 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data';
-const GRID_SIZE = 20; // Grid snap size in pixels
+const STORAGE_KEY = 'personaltab-data-v2'; // Changed key to force refresh
+const GRID_SIZE = 20;
 const WIDGET_WIDTH = 310;
 const WIDGET_HEIGHT = 400;
 const WIDGET_MARGIN = 20;
@@ -93,13 +93,17 @@ export default function App() {
   };
 
   const initializeDefaultWidgets = () => {
+    // Clear any existing data first
+    localStorage.removeItem('personaltab-data');
+    localStorage.removeItem('personaltab-data-v1');
+    
     const defaultWidgets: Widget[] = [
       {
         id: '1',
         type: 'notes',
         title: 'Notes',
         content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.' },
-        x: 60,
+        x: 60,  // First position
         y: 60,
         width: 310,
         height: 400,
@@ -110,7 +114,7 @@ export default function App() {
         type: 'todo',
         title: 'List',
         content: { todos: [] },
-        x: 390,
+        x: 390, // Second position (60 + 310 + 20)
         y: 60,
         width: 310,
         height: 400,
@@ -121,7 +125,7 @@ export default function App() {
         type: 'links',
         title: 'Links',
         content: { links: [] },
-        x: 720,
+        x: 720, // Third position (390 + 310 + 20)
         y: 60,
         width: 310,
         height: 400,
@@ -138,7 +142,7 @@ export default function App() {
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        if (data.widgets && Array.isArray(data.widgets)) {
+        if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
           setWidgets(data.widgets);
           setNextId(data.nextId || 4);
           setMaxZIndex(data.maxZIndex || 1);

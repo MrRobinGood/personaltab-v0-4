@@ -101,14 +101,23 @@
     @apply border-border;
   }
   
-  html, body {
-    /* Uniform gray background throughout the entire page */
-    background: linear-gradient(to bottom right, #f9fafb, #f3f4f6) !important;
+  html {
+    /* Single uniform background for entire page */
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
     min-height: 100vh;
   }
   
   body {
     @apply text-foreground;
+    /* Inherit the same background to ensure uniformity */
+    background: inherit !important;
+    min-height: 100vh;
+  }
+  
+  /* Ensure all containers inherit the same background */
+  #root {
+    background: inherit !important;
+    min-height: 100vh;
   }
 }
 
