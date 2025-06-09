@@ -47,7 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v6'; // Changed version to force reset
+const STORAGE_KEY = 'personaltab-data-v7';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -113,11 +113,32 @@ export default function App() {
 
   // Initialize widgets and layouts
   useEffect(() => {
-    // Force reset by using new storage key and always creating defaults
-    const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
-    setWidgets(defaultWidgets);
-    setLayouts(defaultLayouts);
-    setNextId(4);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
+          setWidgets(data.widgets);
+          setLayouts(data.layouts || {});
+          setNextId(data.nextId || data.widgets.length + 1);
+          return;
+        }
+      }
+      
+      // No valid saved data, create defaults
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
+      setWidgets(defaultWidgets);
+      setLayouts(defaultLayouts);
+      setNextId(4);
+      
+    } catch (error) {
+      console.error('Error loading saved data:', error);
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
+      setWidgets(defaultWidgets);
+      setLayouts(defaultLayouts);
+      setNextId(4);
+    }
   }, []);
 
   // Save data whenever widgets or layouts change
@@ -265,7 +286,7 @@ export default function App() {
           isDraggable={true}
           isResizable={true}
           compactType={null}
-          preventCollision={false}
+          preventCollision={true}
           useCSSTransforms={true}
         >
           {widgets.map((widget) => (
