@@ -47,7 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v5'; // Changed version to force reset
+const STORAGE_KEY = 'personaltab-data-v6'; // Changed version to force reset
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -79,22 +79,22 @@ export default function App() {
       }
     ];
 
-    // Create layouts for 3 widgets side by side
+    // Create layouts for 3 widgets side by side - using 3 columns out of 12
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 4, y: 0, w: 4, h: 8 },
-        { i: '3', x: 8, y: 0, w: 4, h: 8 }
+        { i: '1', x: 0, y: 0, w: 3, h: 8 },
+        { i: '2', x: 3, y: 0, w: 3, h: 8 },
+        { i: '3', x: 6, y: 0, w: 3, h: 8 }
       ],
       md: [
+        { i: '1', x: 0, y: 0, w: 3, h: 8 },
+        { i: '2', x: 3, y: 0, w: 3, h: 8 },
+        { i: '3', x: 6, y: 0, w: 3, h: 8 }
+      ],
+      sm: [
         { i: '1', x: 0, y: 0, w: 4, h: 8 },
         { i: '2', x: 4, y: 0, w: 4, h: 8 },
         { i: '3', x: 8, y: 0, w: 4, h: 8 }
-      ],
-      sm: [
-        { i: '1', x: 0, y: 0, w: 6, h: 8 },
-        { i: '2', x: 6, y: 0, w: 6, h: 8 },
-        { i: '3', x: 0, y: 8, w: 6, h: 8 }
       ],
       xs: [
         { i: '1', x: 0, y: 0, w: 6, h: 8 },
@@ -148,9 +148,9 @@ export default function App() {
     // Find a good position for the new widget
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
-      x: 0,
+      x: 9,
       y: 0,
-      w: 4,
+      w: 3,
       h: 8
     };
 
@@ -158,8 +158,8 @@ export default function App() {
     setLayouts(prev => ({
       ...prev,
       lg: [...(prev.lg || []), newLayoutItem],
-      md: [...(prev.md || []), { ...newLayoutItem, w: 4 }],
-      sm: [...(prev.sm || []), { ...newLayoutItem, w: 6 }],
+      md: [...(prev.md || []), { ...newLayoutItem, w: 3 }],
+      sm: [...(prev.sm || []), { ...newLayoutItem, w: 4 }],
       xs: [...(prev.xs || []), { ...newLayoutItem, w: 6 }],
       xxs: [...(prev.xxs || []), { ...newLayoutItem, w: 4 }]
     }));
@@ -260,7 +260,7 @@ export default function App() {
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }}
           rowHeight={40}
-          margin={[12, 8]}
+          margin={[8, 8]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
