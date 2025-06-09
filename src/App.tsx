@@ -47,7 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v4';
+const STORAGE_KEY = 'personaltab-data-v5'; // Changed version to force reset
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -82,29 +82,29 @@ export default function App() {
     // Create layouts for 3 widgets side by side
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 10 },
-        { i: '2', x: 4, y: 0, w: 4, h: 10 },
-        { i: '3', x: 8, y: 0, w: 4, h: 10 }
+        { i: '1', x: 0, y: 0, w: 4, h: 8 },
+        { i: '2', x: 4, y: 0, w: 4, h: 8 },
+        { i: '3', x: 8, y: 0, w: 4, h: 8 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 4, h: 10 },
-        { i: '2', x: 4, y: 0, w: 4, h: 10 },
-        { i: '3', x: 8, y: 0, w: 4, h: 10 }
+        { i: '1', x: 0, y: 0, w: 4, h: 8 },
+        { i: '2', x: 4, y: 0, w: 4, h: 8 },
+        { i: '3', x: 8, y: 0, w: 4, h: 8 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 6, h: 10 },
-        { i: '2', x: 6, y: 0, w: 6, h: 10 },
-        { i: '3', x: 0, y: 10, w: 6, h: 10 }
+        { i: '1', x: 0, y: 0, w: 6, h: 8 },
+        { i: '2', x: 6, y: 0, w: 6, h: 8 },
+        { i: '3', x: 0, y: 8, w: 6, h: 8 }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 6, h: 10 },
-        { i: '2', x: 0, y: 10, w: 6, h: 10 },
-        { i: '3', x: 0, y: 20, w: 6, h: 10 }
+        { i: '1', x: 0, y: 0, w: 6, h: 8 },
+        { i: '2', x: 0, y: 8, w: 6, h: 8 },
+        { i: '3', x: 0, y: 16, w: 6, h: 8 }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 4, h: 10 },
-        { i: '2', x: 0, y: 10, w: 4, h: 10 },
-        { i: '3', x: 0, y: 20, w: 4, h: 10 }
+        { i: '1', x: 0, y: 0, w: 4, h: 8 },
+        { i: '2', x: 0, y: 8, w: 4, h: 8 },
+        { i: '3', x: 0, y: 16, w: 4, h: 8 }
       ]
     };
 
@@ -113,32 +113,11 @@ export default function App() {
 
   // Initialize widgets and layouts
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      
-      if (saved) {
-        const data = JSON.parse(saved);
-        if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
-          setWidgets(data.widgets);
-          setLayouts(data.layouts || {});
-          setNextId(data.nextId || data.widgets.length + 1);
-          return;
-        }
-      }
-      
-      // No valid saved data, create defaults
-      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
-      setWidgets(defaultWidgets);
-      setLayouts(defaultLayouts);
-      setNextId(4);
-      
-    } catch (error) {
-      console.error('Error loading saved data:', error);
-      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
-      setWidgets(defaultWidgets);
-      setLayouts(defaultLayouts);
-      setNextId(4);
-    }
+    // Force reset by using new storage key and always creating defaults
+    const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
+    setWidgets(defaultWidgets);
+    setLayouts(defaultLayouts);
+    setNextId(4);
   }, []);
 
   // Save data whenever widgets or layouts change
@@ -172,7 +151,7 @@ export default function App() {
       x: 0,
       y: 0,
       w: 4,
-      h: 10
+      h: 8
     };
 
     setWidgets([...widgets, newWidget]);
@@ -280,12 +259,12 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }}
-          rowHeight={35}
-          margin={[16, 12]}
+          rowHeight={40}
+          margin={[12, 8]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType="vertical"
+          compactType={null}
           preventCollision={false}
           useCSSTransforms={true}
         >
