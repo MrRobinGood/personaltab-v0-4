@@ -473,8 +473,14 @@ export default function App() {
     }, 150); // Small delay to allow moving to menu
   };
 
+  // Calculate the maximum Y position of all widgets for bottom padding
+  const getMaxWidgetBottom = () => {
+    if (widgets.length === 0) return 0;
+    return Math.max(...widgets.map(w => w.y + w.height));
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative" style={{ paddingBottom: `${Math.max(100, getMaxWidgetBottom() - window.innerHeight + 200)}px` }}>
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
