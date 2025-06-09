@@ -79,31 +79,32 @@ export default function App() {
       }
     ];
 
+    // Create layouts for 3 widgets side by side
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 4, y: 0, w: 4, h: 8 },
-        { i: '3', x: 8, y: 0, w: 4, h: 8 }
+        { i: '1', x: 0, y: 0, w: 4, h: 10 },
+        { i: '2', x: 4, y: 0, w: 4, h: 10 },
+        { i: '3', x: 8, y: 0, w: 4, h: 10 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 4, y: 0, w: 4, h: 8 },
-        { i: '3', x: 8, y: 0, w: 4, h: 8 }
+        { i: '1', x: 0, y: 0, w: 4, h: 10 },
+        { i: '2', x: 4, y: 0, w: 4, h: 10 },
+        { i: '3', x: 8, y: 0, w: 4, h: 10 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 6, h: 8 },
-        { i: '2', x: 6, y: 0, w: 6, h: 8 },
-        { i: '3', x: 0, y: 8, w: 6, h: 8 }
+        { i: '1', x: 0, y: 0, w: 6, h: 10 },
+        { i: '2', x: 6, y: 0, w: 6, h: 10 },
+        { i: '3', x: 0, y: 10, w: 6, h: 10 }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 0, y: 8, w: 4, h: 8 },
-        { i: '3', x: 0, y: 16, w: 4, h: 8 }
+        { i: '1', x: 0, y: 0, w: 6, h: 10 },
+        { i: '2', x: 0, y: 10, w: 6, h: 10 },
+        { i: '3', x: 0, y: 20, w: 6, h: 10 }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 2, h: 8 },
-        { i: '2', x: 0, y: 8, w: 2, h: 8 },
-        { i: '3', x: 0, y: 16, w: 2, h: 8 }
+        { i: '1', x: 0, y: 0, w: 4, h: 10 },
+        { i: '2', x: 0, y: 10, w: 4, h: 10 },
+        { i: '3', x: 0, y: 20, w: 4, h: 10 }
       ]
     };
 
@@ -171,7 +172,7 @@ export default function App() {
       x: 0,
       y: 0,
       w: 4,
-      h: 8
+      h: 10
     };
 
     setWidgets([...widgets, newWidget]);
@@ -180,8 +181,8 @@ export default function App() {
       lg: [...(prev.lg || []), newLayoutItem],
       md: [...(prev.md || []), { ...newLayoutItem, w: 4 }],
       sm: [...(prev.sm || []), { ...newLayoutItem, w: 6 }],
-      xs: [...(prev.xs || []), { ...newLayoutItem, w: 4 }],
-      xxs: [...(prev.xxs || []), { ...newLayoutItem, w: 2 }]
+      xs: [...(prev.xs || []), { ...newLayoutItem, w: 6 }],
+      xxs: [...(prev.xxs || []), { ...newLayoutItem, w: 4 }]
     }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
@@ -278,9 +279,9 @@ export default function App() {
           layouts={layouts}
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 12, sm: 12, xs: 4, xxs: 2 }}
-          rowHeight={40}
-          margin={[12, 8]}
+          cols={{ lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }}
+          rowHeight={35}
+          margin={[16, 12]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
