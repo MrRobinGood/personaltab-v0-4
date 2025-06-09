@@ -235,8 +235,8 @@ export default function App() {
     // Try positions in a grid pattern
     const startX = 60;
     const startY = 60;
-    const stepX = snapToGrid(width + WIDGET_MARGIN);
-    const stepY = snapToGrid(height + WIDGET_MARGIN);
+    const stepX = 330; // 310 + 20 margin
+    const stepY = 420; // 400 + 20 margin
     
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < 5; col++) {
@@ -286,10 +286,13 @@ export default function App() {
         setSnapPreview({ x: bestPosition.x, y: bestPosition.y });
 
         // Update widget position immediately during drag (not snapped yet)
-        updateWidget(dragState.widgetId!, {
-          x: newX,
-          y: newY
-        });
+        setWidgets(prevWidgets => 
+          prevWidgets.map(w => 
+            w.id === dragState.widgetId 
+              ? { ...w, x: newX, y: newY }
+              : w
+          )
+        );
       } else if (dragState.isResizing) {
         const deltaX = e.clientX - dragState.startX;
         const deltaY = e.clientY - dragState.startY;
@@ -297,20 +300,26 @@ export default function App() {
         const newWidth = Math.max(200, snapToGrid(dragState.startWidth + deltaX));
         const newHeight = Math.max(150, snapToGrid(dragState.startHeight + deltaY));
 
-        updateWidget(dragState.widgetId!, {
-          width: newWidth,
-          height: newHeight
-        });
+        setWidgets(prevWidgets => 
+          prevWidgets.map(w => 
+            w.id === dragState.widgetId 
+              ? { ...w, width: newWidth, height: newHeight }
+              : w
+          )
+        );
       }
     };
 
     const handleMouseUp = () => {
       if (dragState.isDragging && dragState.widgetId && snapPreview) {
         // Apply the snapped position from preview
-        updateWidget(dragState.widgetId, {
-          x: snapPreview.x,
-          y: snapPreview.y
-        });
+        setWidgets(prevWidgets => 
+          prevWidgets.map(w => 
+            w.id === dragState.widgetId 
+              ? { ...w, x: snapPreview.x, y: snapPreview.y }
+              : w
+          )
+        );
       }
 
       // Clear snap preview
@@ -351,8 +360,8 @@ export default function App() {
     const cols = 3;
     const startX = 60;
     const startY = 60;
-    const stepX = 330; // 310 + 20 margin, properly aligned
-    const stepY = 420; // 400 + 20 margin, properly aligned
+    const stepX = 330; // 310 + 20 margin
+    const stepY = 420; // 400 + 20 margin
     
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < cols; col++) {
@@ -479,7 +488,7 @@ export default function App() {
 
             {showAddMenu && (
               <div 
-                className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
+                className="absolute right-full top-0 mr-1 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
                 onMouseEnter={handleMenuMouseEnter}
                 onMouseLeave={handleMenuMouseLeave}
               >
