@@ -93,6 +93,109 @@ export default function App() {
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   };
 
+  // Check if two rectangles overlap
+  const rectanglesOverlap = (rect1: any, rect2: any) => {
+    return !(rect1.x >= rect2.x + rect2.width || 
+             rect2.x >= rect1.x + rect1.width || 
+             rect1.y >= rect2.y + rect2.height || 
+             rect2.y >= rect1.y + rect1.height);
+  };
+
+  // Find the best position for a widget, avoiding collisions
+  const findBestPosition = (movingWidgetId: string, targetX: number, targetY: number, targetWidth: number, targetHeight: number) => {
+    // First snap to grid
+    const snappedX = Math.max(0, snapToGrid(targetX));
+    const snappedY = Math.max(0, snapToGrid(targetY));
+    
+    const movingRect = {
+      x: snappedX,
+      y: snappedY,
+      width: targetWidth,
+      height: targetHeight
+    };
+
+    // Get all other widgets (excluding the one being moved)
+    const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
+    
+    // Check if the snapped position overlaps with any other widget
+    const hasCollision = otherWidgets.some(widget => rectanglesOverlap(movingRect, widget));
+    
+    if (!hasCollision) {
+      return { x: snappedX, y: snappedY };
+    }
+
+    // If there's a collision, find the nearest free position
+    return findNearestFreePosition(movingWidgetId, snappedX, snappedY, targetWidth, targetHeight);
+  };
+
+  // Find the nearest free position using a spiral search pattern
+  const findNearestFreePosition = (movingWidgetId: string, preferredX: number, preferredY: number, width: number, height: number) => {
+    const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
+    const stepSize = GRID_SIZE;
+    const maxSteps = 50; // Limit search to prevent infinite loops
+
+    // Try positions in expanding spiral pattern
+    for (let step = 0; step <= maxSteps; step++) {
+      const positions = [];
+      
+      if (step === 0) {
+        // First try the preferred position
+        positions.push({ x: preferredX, y: preferredY });
+      } else {
+        // Generate positions in a square pattern around the preferred position
+        for (let i = -step; i <= step; i++) {
+          for (let j = -step; j <= step; j++) {
+            // Only check the perimeter of the square (not the interior)
+            if (Math.abs(i) === step || Math.abs(j) === step) {
+              const x = Math.max(0, preferredX + i * stepSize);
+              const y = Math.max(0, preferredY + j * stepSize);
+              positions.push({ x, y });
+            }
+          }
+        }
+      }
+
+      // Test each position
+      for (const pos of positions) {
+        const testRect = { x: pos.x, y: pos.y, width, height };
+        const hasCollision = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
+        
+        if (!hasCollision) {
+          return pos;
+        }
+      }
+    }
+
+    // Fallback: find a position in a grid layout
+    return findGridPosition(movingWidgetId, width, height);
+  };
+
+  // Find a position in a clean grid layout
+  const findGridPosition = (movingWidgetId: string, width: number, height: number) => {
+    const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
+    const startX = 60;
+    const startY = 60;
+    const stepX = 330; // 310 + 20 margin
+    const stepY = 420; // 400 + 20 margin
+    
+    for (let row = 0; row < 10; row++) {
+      for (let col = 0; col < 5; col++) {
+        const x = startX + col * stepX;
+        const y = startY + row * stepY;
+        
+        const testRect = { x, y, width, height };
+        const isOccupied = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
+        
+        if (!isOccupied) {
+          return { x, y };
+        }
+      }
+    }
+    
+    // Ultimate fallback
+    return { x: startX, y: startY + Math.ceil(widgets.length / 3) * stepY };
+  };
+
   const initializeDefaultWidgets = () => {
     // Clear any existing data first
     localStorage.removeItem('personaltab-data');
@@ -164,102 +267,6 @@ export default function App() {
     }
   }, [widgets, nextId, maxZIndex]);
 
-  // Check if two rectangles overlap
-  const rectanglesOverlap = (rect1: any, rect2: any) => {
-    return !(rect1.x >= rect2.x + rect2.width || 
-             rect2.x >= rect1.x + rect1.width || 
-             rect1.y >= rect2.y + rect2.height || 
-             rect2.y >= rect1.y + rect1.height);
-  };
-
-  // Find the best snapped position to avoid overlaps
-  const findBestSnappedPosition = (movingWidgetId: string, targetX: number, targetY: number, targetWidth: number, targetHeight: number) => {
-    // First snap to grid
-    const snappedX = Math.max(0, snapToGrid(targetX));
-    const snappedY = Math.max(0, snapToGrid(targetY));
-    
-    const movingRect = {
-      x: snappedX,
-      y: snappedY,
-      width: targetWidth,
-      height: targetHeight
-    };
-
-    // Get all other widgets (excluding the one being moved)
-    const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
-    
-    // Check if the snapped position overlaps with any other widget
-    const hasCollision = otherWidgets.some(widget => rectanglesOverlap(movingRect, widget));
-    
-    if (!hasCollision) {
-      return { x: snappedX, y: snappedY, hasCollision: false };
-    }
-
-    // Try to find a nearby grid-aligned position
-    const gridSteps = Math.ceil(Math.max(targetWidth, targetHeight) / GRID_SIZE) + 2;
-    
-    // Try positions in expanding grid pattern
-    for (let step = 1; step <= gridSteps; step++) {
-      const directions = [
-        { dx: 0, dy: step * GRID_SIZE },     // down
-        { dx: step * GRID_SIZE, dy: 0 },     // right
-        { dx: 0, dy: -step * GRID_SIZE },    // up
-        { dx: -step * GRID_SIZE, dy: 0 },    // left
-        { dx: step * GRID_SIZE, dy: step * GRID_SIZE },   // down-right
-        { dx: -step * GRID_SIZE, dy: step * GRID_SIZE },  // down-left
-        { dx: step * GRID_SIZE, dy: -step * GRID_SIZE },  // up-right
-        { dx: -step * GRID_SIZE, dy: -step * GRID_SIZE }, // up-left
-      ];
-
-      for (const direction of directions) {
-        const testX = Math.max(0, snappedX + direction.dx);
-        const testY = Math.max(0, snappedY + direction.dy);
-        
-        const testRect = { x: testX, y: testY, width: targetWidth, height: targetHeight };
-        const stillColliding = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
-        
-        if (!stillColliding) {
-          return { x: testX, y: testY, hasCollision: true };
-        }
-      }
-    }
-
-    // If no nearby position found, find a completely free grid-aligned area
-    return findCompletelyFreeGridPosition(movingWidgetId, targetWidth, targetHeight);
-  };
-
-  // Find a completely free grid-aligned position
-  const findCompletelyFreeGridPosition = (movingWidgetId: string, width: number, height: number) => {
-    const otherWidgets = widgets.filter(w => w.id !== movingWidgetId);
-    
-    // Try positions in a grid pattern
-    const startX = 60;
-    const startY = 60;
-    const stepX = 330; // 310 + 20 margin
-    const stepY = 420; // 400 + 20 margin
-    
-    for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 5; col++) {
-        const x = startX + col * stepX;
-        const y = startY + row * stepY;
-        
-        const testRect = { x, y, width, height };
-        const isOccupied = otherWidgets.some(widget => rectanglesOverlap(testRect, widget));
-        
-        if (!isOccupied) {
-          return { x, y, hasCollision: true };
-        }
-      }
-    }
-    
-    // Fallback to a position far to the right
-    return { 
-      x: startX + 5 * stepX, 
-      y: startY,
-      hasCollision: true
-    };
-  };
-
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragState.isDragging && !dragState.isResizing) return;
@@ -282,7 +289,7 @@ export default function App() {
         }));
 
         // Show snap preview
-        const bestPosition = findBestSnappedPosition(dragState.widgetId!, newX, newY, widget.width, widget.height);
+        const bestPosition = findBestPosition(dragState.widgetId!, newX, newY, widget.width, widget.height);
         setSnapPreview({ x: bestPosition.x, y: bestPosition.y });
 
         // Update widget position immediately during drag (not snapped yet)
@@ -312,7 +319,7 @@ export default function App() {
 
     const handleMouseUp = () => {
       if (dragState.isDragging && dragState.widgetId && snapPreview) {
-        // Apply the snapped position from preview
+        // Apply the final snapped position
         setWidgets(prevWidgets => 
           prevWidgets.map(w => 
             w.id === dragState.widgetId 
