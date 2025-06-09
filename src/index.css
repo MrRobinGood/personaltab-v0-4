@@ -100,16 +100,15 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-    /* Ensure consistent gray background throughout */
+  
+  html, body {
+    /* Uniform gray background throughout the entire page */
     background: linear-gradient(to bottom right, #f9fafb, #f3f4f6) !important;
     min-height: 100vh;
   }
   
-  /* Override any white backgrounds that might appear */
-  html {
-    background: linear-gradient(to bottom right, #f9fafb, #f3f4f6) !important;
+  body {
+    @apply text-foreground;
   }
 }
 

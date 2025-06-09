@@ -100,7 +100,7 @@ export default function App() {
         title: 'Notes',
         content: { text: 'Welcome to PersonalTab!\n\nDrag widgets by their title bar to move them.\nDrag the bottom-right corner to resize.\nClick titles to edit them.' },
         x: 60,
-        y: 30,
+        y: 60,
         width: 310,
         height: 400,
         zIndex: 1
@@ -111,7 +111,7 @@ export default function App() {
         title: 'List',
         content: { todos: [] },
         x: 390,
-        y: 30,
+        y: 60,
         width: 310,
         height: 400,
         zIndex: 1
@@ -122,7 +122,7 @@ export default function App() {
         title: 'Links',
         content: { links: [] },
         x: 720,
-        y: 30,
+        y: 60,
         width: 310,
         height: 400,
         zIndex: 1
@@ -229,7 +229,7 @@ export default function App() {
     
     // Try positions in a grid pattern
     const startX = 60;
-    const startY = 30;
+    const startY = 60;
     const stepX = snapToGrid(width + WIDGET_MARGIN);
     const stepY = snapToGrid(height + WIDGET_MARGIN);
     
@@ -300,23 +300,12 @@ export default function App() {
     };
 
     const handleMouseUp = () => {
-      if (dragState.isDragging && dragState.widgetId) {
-        const widget = widgets.find(w => w.id === dragState.widgetId);
-        if (widget) {
-          // Apply final snapped positioning
-          const bestPosition = findBestSnappedPosition(
-            dragState.widgetId, 
-            dragState.currentX, 
-            dragState.currentY, 
-            widget.width, 
-            widget.height
-          );
-          
-          updateWidget(dragState.widgetId, {
-            x: bestPosition.x,
-            y: bestPosition.y
-          });
-        }
+      if (dragState.isDragging && dragState.widgetId && snapPreview) {
+        // Apply the snapped position from preview
+        updateWidget(dragState.widgetId, {
+          x: snapPreview.x,
+          y: snapPreview.y
+        });
       }
 
       // Clear snap preview
@@ -350,13 +339,13 @@ export default function App() {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
-  }, [dragState, widgets]);
+  }, [dragState, widgets, snapPreview]);
 
   // Find the next available grid-aligned position for a new widget
   const findNextAvailableGridPosition = () => {
     const cols = 3;
     const startX = 60;
-    const startY = 30;
+    const startY = 60;
     const stepX = snapToGrid(WIDGET_WIDTH + WIDGET_MARGIN);
     const stepY = snapToGrid(WIDGET_HEIGHT + WIDGET_MARGIN);
     
