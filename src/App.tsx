@@ -79,33 +79,19 @@ export default function App() {
       }
     ];
 
-    // Create layouts for 3 widgets side by side - using 3 columns out of 12
+    // Fixed layout - all breakpoints use the same 3-column layout
+    const fixedLayout = [
+      { i: '1', x: 0, y: 0, w: 4, h: 8 },
+      { i: '2', x: 4, y: 0, w: 4, h: 8 },
+      { i: '3', x: 8, y: 0, w: 4, h: 8 }
+    ];
+
     const defaultLayouts = {
-      lg: [
-        { i: '1', x: 0, y: 0, w: 3, h: 8 },
-        { i: '2', x: 3, y: 0, w: 3, h: 8 },
-        { i: '3', x: 6, y: 0, w: 3, h: 8 }
-      ],
-      md: [
-        { i: '1', x: 0, y: 0, w: 3, h: 8 },
-        { i: '2', x: 3, y: 0, w: 3, h: 8 },
-        { i: '3', x: 6, y: 0, w: 3, h: 8 }
-      ],
-      sm: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 4, y: 0, w: 4, h: 8 },
-        { i: '3', x: 8, y: 0, w: 4, h: 8 }
-      ],
-      xs: [
-        { i: '1', x: 0, y: 0, w: 6, h: 8 },
-        { i: '2', x: 0, y: 8, w: 6, h: 8 },
-        { i: '3', x: 0, y: 16, w: 6, h: 8 }
-      ],
-      xxs: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 0, y: 8, w: 4, h: 8 },
-        { i: '3', x: 0, y: 16, w: 4, h: 8 }
-      ]
+      lg: fixedLayout,
+      md: fixedLayout,
+      sm: fixedLayout,
+      xs: fixedLayout,
+      xxs: fixedLayout
     };
 
     return { widgets: defaultWidgets, layouts: defaultLayouts };
@@ -169,9 +155,9 @@ export default function App() {
     // Find a good position for the new widget
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
-      x: 9,
-      y: 0,
-      w: 3,
+      x: 0,
+      y: 8,
+      w: 4,
       h: 8
     };
 
@@ -179,10 +165,10 @@ export default function App() {
     setLayouts(prev => ({
       ...prev,
       lg: [...(prev.lg || []), newLayoutItem],
-      md: [...(prev.md || []), { ...newLayoutItem, w: 3 }],
-      sm: [...(prev.sm || []), { ...newLayoutItem, w: 4 }],
-      xs: [...(prev.xs || []), { ...newLayoutItem, w: 6 }],
-      xxs: [...(prev.xxs || []), { ...newLayoutItem, w: 4 }]
+      md: [...(prev.md || []), newLayoutItem],
+      sm: [...(prev.sm || []), newLayoutItem],
+      xs: [...(prev.xs || []), newLayoutItem],
+      xxs: [...(prev.xxs || []), newLayoutItem]
     }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
@@ -279,7 +265,7 @@ export default function App() {
           layouts={layouts}
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }}
+          cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
           rowHeight={40}
           margin={[8, 8]}
           containerPadding={[0, 0]}
@@ -289,6 +275,7 @@ export default function App() {
           preventCollision={false}
           useCSSTransforms={true}
           allowOverlap={false}
+          width={1200}
         >
           {widgets.map((widget) => (
             <div key={widget.id}>
