@@ -1,12 +1,14 @@
 import type React from "react";
 import { useState, useEffect } from "react";
 import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
-import GridLayout from "react-grid-layout";
+import { Responsive, WidthProvider } from "react-grid-layout";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface Widget {
   id: string;
@@ -49,13 +51,13 @@ const STORAGE_KEY = 'personaltab-data-v8';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
-  const [layout, setLayout] = useState<LayoutItem[]>([]);
+  const [layouts, setLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
   const [nextId, setNextId] = useState(1);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
 
-  const createDefaultWidgets = (): { widgets: Widget[], layout: LayoutItem[] } => {
+  const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
     const defaultWidgets = [
       {
         id: '1',
@@ -77,17 +79,25 @@ export default function App() {
       }
     ];
 
-    // Fixed layout - 3 widgets side by side, each 310px wide (w: 31) with proper spacing
-    const defaultLayout = [
-      { i: '1', x: 0, y: 0, w: 31, h: 38 },
-      { i: '2', x: 31, y: 0, w: 31, h: 38 },
-      { i: '3', x: 62, y: 0, w: 31, h: 38 }
+    // Fixed layout for all breakpoints - 3 widgets side by side, each 4 columns wide
+    const fixedLayout = [
+      { i: '1', x: 0, y: 0, w: 4, h: 8 },
+      { i: '2', x: 4, y: 0, w: 4, h: 8 },
+      { i: '3', x: 8, y: 0, w: 4, h: 8 }
     ];
 
-    return { widgets: defaultWidgets, layout: defaultLayout };
+    const defaultLayouts = {
+      lg: fixedLayout,
+      md: fixedLayout,
+      sm: fixedLayout,
+      xs: fixedLayout,
+      xxs: fixedLayout
+    };
+
+    return { widgets: defaultWidgets, layouts: defaultLayouts };
   };
 
-  // Initialize widgets and layout
+  // Initialize widgets and layouts
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -96,33 +106,33 @@ export default function App() {
         const data = JSON.parse(saved);
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
           setWidgets(data.widgets);
-          setLayout(data.layout || []);
+          setLayouts(data.layouts || {});
           setNextId(data.nextId || data.widgets.length + 1);
           return;
         }
       }
       
       // No valid saved data, create defaults
-      const { widgets: defaultWidgets, layout: defaultLayout } = createDefaultWidgets();
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
-      setLayout(defaultLayout);
+      setLayouts(defaultLayouts);
       setNextId(4);
       
     } catch (error) {
       console.error('Error loading saved data:', error);
-      const { widgets: defaultWidgets, layout: defaultLayout } = createDefaultWidgets();
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
-      setLayout(defaultLayout);
+      setLayouts(defaultLayouts);
       setNextId(4);
     }
   }, []);
 
-  // Save data whenever widgets or layout change
+  // Save data whenever widgets or layouts change
   useEffect(() => {
     if (widgets.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, layout, nextId }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, layouts, nextId }));
     }
-  }, [widgets, layout, nextId]);
+  }, [widgets, layouts, nextId]);
 
   const addWidget = (type: Widget['type']) => {
     const titleMap = {
@@ -146,28 +156,40 @@ export default function App() {
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
       x: 0,
-      y: 38,
-      w: 31,
-      h: 38
+      y: 8,
+      w: 4,
+      h: 8
     };
 
     setWidgets([...widgets, newWidget]);
-    setLayout([...layout, newLayoutItem]);
+    setLayouts(prev => ({
+      lg: [...(prev.lg || []), newLayoutItem],
+      md: [...(prev.md || []), newLayoutItem],
+      sm: [...(prev.sm || []), newLayoutItem],
+      xs: [...(prev.xs || []), newLayoutItem],
+      xxs: [...(prev.xxs || []), newLayoutItem]
+    }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
   };
 
   const removeWidget = (id: string) => {
     setWidgets(widgets.filter(w => w.id !== id));
-    setLayout(layout.filter(item => item.i !== id));
+    setLayouts(prev => ({
+      lg: (prev.lg || []).filter(item => item.i !== id),
+      md: (prev.md || []).filter(item => item.i !== id),
+      sm: (prev.sm || []).filter(item => item.i !== id),
+      xs: (prev.xs || []).filter(item => item.i !== id),
+      xxs: (prev.xxs || []).filter(item => item.i !== id)
+    }));
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  const onLayoutChange = (newLayout: LayoutItem[]) => {
-    setLayout(newLayout);
+  const onLayoutChange = (layout: LayoutItem[], layouts: { [key: string]: LayoutItem[] }) => {
+    setLayouts(layouts);
   };
 
   return (
@@ -237,13 +259,13 @@ export default function App() {
       </div>
 
       <div className="p-4">
-        <GridLayout
+        <ResponsiveGridLayout
           className="layout"
-          layout={layout}
+          layouts={layouts}
           onLayoutChange={onLayoutChange}
-          cols={100}
-          rowHeight={10}
-          width={1000}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
+          rowHeight={40}
           margin={[8, 8]}
           containerPadding={[0, 0]}
           isDraggable={true}
@@ -267,7 +289,7 @@ export default function App() {
               />
             </div>
           ))}
-        </GridLayout>
+        </ResponsiveGridLayout>
       </div>
     </div>
   );
