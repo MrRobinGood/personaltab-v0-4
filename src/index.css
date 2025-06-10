@@ -236,13 +236,3 @@
     transform: scale(1);
   }
 }
-
-/* Drag handle styling */
-.drag-handle {
-  cursor: move;
-  cursor: grab;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}

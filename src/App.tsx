@@ -82,29 +82,29 @@ export default function App() {
     // Create layouts for 3 widgets side by side - using 3 columns out of 12
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 3, h: 10 },
-        { i: '2', x: 3, y: 0, w: 3, h: 10 },
-        { i: '3', x: 6, y: 0, w: 3, h: 10 }
+        { i: '1', x: 0, y: 0, w: 3, h: 8 },
+        { i: '2', x: 3, y: 0, w: 3, h: 8 },
+        { i: '3', x: 6, y: 0, w: 3, h: 8 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 3, h: 10 },
-        { i: '2', x: 3, y: 0, w: 3, h: 10 },
-        { i: '3', x: 6, y: 0, w: 3, h: 10 }
+        { i: '1', x: 0, y: 0, w: 3, h: 8 },
+        { i: '2', x: 3, y: 0, w: 3, h: 8 },
+        { i: '3', x: 6, y: 0, w: 3, h: 8 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 4, h: 10 },
-        { i: '2', x: 4, y: 0, w: 4, h: 10 },
-        { i: '3', x: 8, y: 0, w: 4, h: 10 }
+        { i: '1', x: 0, y: 0, w: 4, h: 8 },
+        { i: '2', x: 4, y: 0, w: 4, h: 8 },
+        { i: '3', x: 8, y: 0, w: 4, h: 8 }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 6, h: 10 },
-        { i: '2', x: 0, y: 10, w: 6, h: 10 },
-        { i: '3', x: 0, y: 20, w: 6, h: 10 }
+        { i: '1', x: 0, y: 0, w: 6, h: 8 },
+        { i: '2', x: 0, y: 8, w: 6, h: 8 },
+        { i: '3', x: 0, y: 16, w: 6, h: 8 }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 4, h: 10 },
-        { i: '2', x: 0, y: 10, w: 4, h: 10 },
-        { i: '3', x: 0, y: 20, w: 4, h: 10 }
+        { i: '1', x: 0, y: 0, w: 4, h: 8 },
+        { i: '2', x: 0, y: 8, w: 4, h: 8 },
+        { i: '3', x: 0, y: 16, w: 4, h: 8 }
       ]
     };
 
@@ -172,7 +172,7 @@ export default function App() {
       x: 9,
       y: 0,
       w: 3,
-      h: 10
+      h: 8
     };
 
     setWidgets([...widgets, newWidget]);
@@ -280,16 +280,15 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }}
-          rowHeight={38}
+          rowHeight={40}
           margin={[8, 8]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType={null}
-          preventCollision={true}
+          compactType="vertical"
+          preventCollision={false}
           useCSSTransforms={true}
           allowOverlap={false}
-          draggableHandle=".drag-handle"
         >
           {widgets.map((widget) => (
             <div key={widget.id}>
@@ -343,7 +342,7 @@ function WidgetCard({
 
   return (
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
-      <CardHeader className="flex-shrink-0 pb-2 drag-handle cursor-move">
+      <CardHeader className="flex-shrink-0 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
             {editingTitle === widget.id ? (
