@@ -1,18 +1,15 @@
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
-import { Responsive, WidthProvider } from "react-grid-layout";
+import { Plus, Menu, X, ExternalLink, Check } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
-
 interface Widget {
   id: string;
-  type: 'notes' | 'links' | 'todo' | 'rss';
+  type: 'notes' | 'links' | 'todo';
   title: string;
   content: any;
 }
@@ -28,89 +25,41 @@ interface TodoItem {
   id: string;
   text: string;
   completed: boolean;
-  backgroundColor: 'white' | 'light-gray' | 'dark-gray' | 'black';
-}
-
-interface RSSItem {
-  title: string;
-  link: string;
-  description: string;
-  pubDate: string;
-  image?: string;
-}
-
-interface LayoutItem {
-  i: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
 }
 
 const STORAGE_KEY = 'personaltab-data-v8';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
-  const [layouts, setLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
   const [nextId, setNextId] = useState(1);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
 
-  const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
-    const defaultWidgets = [
+  const createDefaultWidgets = (): Widget[] => {
+    return [
       {
         id: '1',
-        type: 'notes' as const,
+        type: 'notes',
         title: 'Notes',
-        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets to move them.\nResize by dragging corners.\nClick titles to edit them.' }
+        content: { text: 'Welcome to PersonalTab!\n\nThis is a responsive layout that works properly.\nYou can add notes, todos, and links.\nClick titles to edit them.' }
       },
       {
         id: '2',
-        type: 'todo' as const,
-        title: 'List',
+        type: 'todo',
+        title: 'Todo List',
         content: { todos: [] }
       },
       {
         id: '3',
-        type: 'links' as const,
+        type: 'links',
         title: 'Links',
         content: { links: [] }
       }
     ];
-
-    const defaultLayouts = {
-      lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 12 },
-        { i: '2', x: 4, y: 0, w: 4, h: 12 },
-        { i: '3', x: 8, y: 0, w: 4, h: 12 }
-      ],
-      md: [
-        { i: '1', x: 0, y: 0, w: 6, h: 12 },
-        { i: '2', x: 6, y: 0, w: 6, h: 12 },
-        { i: '3', x: 0, y: 12, w: 6, h: 12 }
-      ],
-      sm: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
-      ],
-      xs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
-      ],
-      xxs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
-      ]
-    };
-
-    return { widgets: defaultWidgets, layouts: defaultLayouts };
   };
 
-  // Initialize widgets and layouts
+  // Initialize widgets
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -119,40 +68,36 @@ export default function App() {
         const data = JSON.parse(saved);
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
           setWidgets(data.widgets);
-          setLayouts(data.layouts || {});
           setNextId(data.nextId || data.widgets.length + 1);
           return;
         }
       }
       
       // No valid saved data, create defaults
-      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
+      const defaultWidgets = createDefaultWidgets();
       setWidgets(defaultWidgets);
-      setLayouts(defaultLayouts);
       setNextId(4);
       
     } catch (error) {
       console.error('Error loading saved data:', error);
-      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
+      const defaultWidgets = createDefaultWidgets();
       setWidgets(defaultWidgets);
-      setLayouts(defaultLayouts);
       setNextId(4);
     }
   }, []);
 
-  // Save data whenever widgets or layouts change
+  // Save data whenever widgets change
   useEffect(() => {
     if (widgets.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, layouts, nextId }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, nextId }));
     }
-  }, [widgets, layouts, nextId]);
+  }, [widgets, nextId]);
 
   const addWidget = (type: Widget['type']) => {
     const titleMap = {
       'notes': 'Notes',
-      'todo': 'List',
-      'links': 'Links',
-      'rss': 'RSS Feed'
+      'todo': 'Todo List',
+      'links': 'Links'
     };
 
     const newWidget: Widget = {
@@ -161,52 +106,25 @@ export default function App() {
       title: titleMap[type],
       content: type === 'notes' ? { text: '' } : 
              type === 'links' ? { links: [] } : 
-             type === 'rss' ? { url: '', items: [] } :
              { todos: [] }
     };
 
-    // Add new widget below existing ones
-    const newLayoutItem: LayoutItem = {
-      i: String(nextId),
-      x: 0,
-      y: 12,
-      w: 4,
-      h: 12
-    };
-
     setWidgets([...widgets, newWidget]);
-    setLayouts(prev => ({
-      lg: [...(prev.lg || []), newLayoutItem],
-      md: [...(prev.md || []), newLayoutItem],
-      sm: [...(prev.sm || []), newLayoutItem],
-      xs: [...(prev.xs || []), newLayoutItem],
-      xxs: [...(prev.xxs || []), newLayoutItem]
-    }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
   };
 
   const removeWidget = (id: string) => {
     setWidgets(widgets.filter(w => w.id !== id));
-    setLayouts(prev => ({
-      lg: (prev.lg || []).filter(item => item.i !== id),
-      md: (prev.md || []).filter(item => item.i !== id),
-      sm: (prev.sm || []).filter(item => item.i !== id),
-      xs: (prev.xs || []).filter(item => item.i !== id),
-      xxs: (prev.xxs || []).filter(item => item.i !== id)
-    }));
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  const onLayoutChange = (layout: LayoutItem[], layouts: { [key: string]: LayoutItem[] }) => {
-    setLayouts(layouts);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
@@ -247,7 +165,7 @@ export default function App() {
                   className="h-8 px-3 text-xs whitespace-nowrap"
                   onClick={() => addWidget('todo')}
                 >
-                  List
+                  Todo
                 </Button>
                 <Button
                   variant="ghost"
@@ -257,52 +175,28 @@ export default function App() {
                 >
                   Links
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-3 text-xs whitespace-nowrap"
-                  onClick={() => addWidget('rss')}
-                >
-                  RSS Feed
-                </Button>
               </div>
             )}
           </div>
         </div>
       </div>
 
+      {/* Main Content - Responsive Grid */}
       <div className="p-4">
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={layouts}
-          onLayoutChange={onLayoutChange}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
-          rowHeight={30}
-          margin={[16, 16]}
-          containerPadding={[0, 0]}
-          isDraggable={true}
-          isResizable={true}
-          compactType={null}
-          preventCollision={true}
-          useCSSTransforms={true}
-          allowOverlap={false}
-          draggableHandle=".drag-handle"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {widgets.map((widget) => (
-            <div key={widget.id}>
-              <WidgetCard
-                widget={widget}
-                onRemove={removeWidget}
-                onUpdate={updateWidget}
-                editingTitle={editingTitle}
-                setEditingTitle={setEditingTitle}
-                editTitleValue={editTitleValue}
-                setEditTitleValue={setEditTitleValue}
-              />
-            </div>
+            <WidgetCard
+              key={widget.id}
+              widget={widget}
+              onRemove={removeWidget}
+              onUpdate={updateWidget}
+              editingTitle={editingTitle}
+              setEditingTitle={setEditingTitle}
+              editTitleValue={editTitleValue}
+              setEditTitleValue={setEditTitleValue}
+            />
           ))}
-        </ResponsiveGridLayout>
+        </div>
       </div>
     </div>
   );
@@ -340,13 +234,10 @@ function WidgetCard({
   };
 
   return (
-    <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
+    <Card className="h-96 flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
       <CardHeader className="flex-shrink-0 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
-            <div className="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
-              <Menu className="w-3 h-3 text-gray-400" />
-            </div>
             {editingTitle === widget.id ? (
               <div className="flex items-center gap-1 flex-1">
                 <Input
@@ -388,7 +279,6 @@ function WidgetCard({
         {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
-        {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
       </CardContent>
     </Card>
   );
@@ -430,8 +320,7 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
     const updated = [...todos, { 
       id: String(Date.now()), 
       text: newTodo.trim(), 
-      completed: false,
-      backgroundColor: 'white' as const
+      completed: false
     }];
     setTodos(updated);
     onUpdate(widget.id, { content: { todos: updated } });
@@ -448,38 +337,6 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
     const updated = todos.filter(t => t.id !== id);
     setTodos(updated);
     onUpdate(widget.id, { content: { todos: updated } });
-  };
-
-  const cycleBackgroundColor = (id: string) => {
-    const colorCycle: TodoItem['backgroundColor'][] = ['white', 'light-gray', 'dark-gray', 'black'];
-    const updated = todos.map(t => {
-      if (t.id === id) {
-        const currentIndex = colorCycle.indexOf(t.backgroundColor);
-        const nextIndex = (currentIndex + 1) % colorCycle.length;
-        return { ...t, backgroundColor: colorCycle[nextIndex] };
-      }
-      return t;
-    });
-    setTodos(updated);
-    onUpdate(widget.id, { content: { todos: updated } });
-  };
-
-  const getBackgroundClasses = (backgroundColor: TodoItem['backgroundColor'], completed: boolean) => {
-    const baseClasses = "text-sm flex-1 cursor-pointer select-none p-2 rounded transition-colors";
-    const completedClass = completed ? 'line-through opacity-60' : '';
-    
-    switch (backgroundColor) {
-      case 'white':
-        return `${baseClasses} bg-white text-black border ${completedClass}`;
-      case 'light-gray':
-        return `${baseClasses} bg-gray-200 text-black ${completedClass}`;
-      case 'dark-gray':
-        return `${baseClasses} bg-gray-600 text-white ${completedClass}`;
-      case 'black':
-        return `${baseClasses} bg-black text-white ${completedClass}`;
-      default:
-        return `${baseClasses} bg-white text-black border ${completedClass}`;
-    }
   };
 
   return (
@@ -506,13 +363,9 @@ function TodoWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: strin
               onChange={() => toggleTodo(todo.id)}
               className="w-4 h-4 flex-shrink-0"
             />
-            <div 
-              className={getBackgroundClasses(todo.backgroundColor, todo.completed)}
-              onClick={() => cycleBackgroundColor(todo.id)}
-              title="Click to change background color"
-            >
+            <span className={`text-sm flex-1 ${todo.completed ? 'line-through opacity-60' : ''}`}>
               {todo.text}
-            </div>
+            </span>
             <Button
               variant="ghost"
               size="sm"
@@ -594,140 +447,6 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
             >
               <X className="w-3 h-3" />
             </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function RSSWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string, updates: Partial<Widget>) => void }) {
-  const [url, setUrl] = useState(widget.content.url || '');
-  const [items, setItems] = useState<RSSItem[]>(widget.content.items || []);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setUrl(widget.content.url || '');
-    setItems(widget.content.items || []);
-  }, [widget.content]);
-
-  const fetchRSSFeed = async () => {
-    if (!url.trim()) return;
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url.trim())}`;
-      const response = await fetch(proxyUrl);
-      const data = await response.json();
-      
-      if (data.status === 'ok') {
-        const rssItems: RSSItem[] = data.items.slice(0, 5).map((item: any) => ({
-          title: item.title || 'No title',
-          link: item.link || '#',
-          description: item.description ? item.description.replace(/<[^>]*>/g, '').substring(0, 150) + '...' : 'No description',
-          pubDate: item.pubDate || new Date().toISOString(),
-          image: item.thumbnail || item.enclosure?.link || ''
-        }));
-        
-        setItems(rssItems);
-        onUpdate(widget.id, { content: { url: url.trim(), items: rssItems } });
-      } else {
-        setError('Failed to fetch RSS feed. Please check the URL.');
-      }
-    } catch (err) {
-      setError('Error fetching RSS feed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-      });
-    } catch {
-      return 'Unknown date';
-    }
-  };
-
-  return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-3">
-        <Input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="RSS feed URL..."
-          className="text-sm h-8 border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 flex-1"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') fetchRSSFeed();
-          }}
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0"
-          onClick={fetchRSSFeed}
-          disabled={loading || !url.trim()}
-        >
-          {loading ? (
-            <div className="w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-          ) : (
-            <Check className="w-3 h-3" />
-          )}
-        </Button>
-      </div>
-
-      {error && (
-        <div className="text-xs text-red-500 mb-2 p-2 bg-red-50 rounded">
-          {error}
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto space-y-2">
-        {items.length === 0 && !loading && !error && (
-          <div className="text-sm text-gray-500 text-center py-4">
-            Enter an RSS feed URL above to get started
-          </div>
-        )}
-        
-        {items.map((item, index) => (
-          <div key={index} className="p-2 rounded bg-gray-50 hover:bg-gray-100 transition-colors">
-            <div className="flex items-start gap-2">
-              {item.image && (
-                <img 
-                  src={item.image} 
-                  alt="" 
-                  className="w-12 h-12 rounded object-cover flex-shrink-0"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-blue-600 hover:underline line-clamp-2 block"
-                >
-                  {item.title}
-                </a>
-                <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                  <Calendar className="w-3 h-3" />
-                  <span>{formatDate(item.pubDate)}</span>
-                </div>
-                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                  {item.description}
-                </p>
-              </div>
-            </div>
           </div>
         ))}
       </div>
