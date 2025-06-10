@@ -79,32 +79,32 @@ export default function App() {
       }
     ];
 
-    // Create layouts for 3 widgets side by side - using 3 columns out of 12
+    // Create layouts for 3 widgets side by side - using more columns for flexibility
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 3, h: 8 },
-        { i: '2', x: 3, y: 0, w: 3, h: 8 },
-        { i: '3', x: 6, y: 0, w: 3, h: 8 }
-      ],
-      md: [
-        { i: '1', x: 0, y: 0, w: 3, h: 8 },
-        { i: '2', x: 3, y: 0, w: 3, h: 8 },
-        { i: '3', x: 6, y: 0, w: 3, h: 8 }
-      ],
-      sm: [
         { i: '1', x: 0, y: 0, w: 4, h: 8 },
         { i: '2', x: 4, y: 0, w: 4, h: 8 },
         { i: '3', x: 8, y: 0, w: 4, h: 8 }
       ],
+      md: [
+        { i: '1', x: 0, y: 0, w: 4, h: 8 },
+        { i: '2', x: 4, y: 0, w: 4, h: 8 },
+        { i: '3', x: 8, y: 0, w: 4, h: 8 }
+      ],
+      sm: [
+        { i: '1', x: 0, y: 0, w: 6, h: 8 },
+        { i: '2', x: 6, y: 0, w: 6, h: 8 },
+        { i: '3', x: 0, y: 8, w: 6, h: 8 }
+      ],
       xs: [
+        { i: '1', x: 0, y: 0, w: 8, h: 8 },
+        { i: '2', x: 0, y: 8, w: 8, h: 8 },
+        { i: '3', x: 0, y: 16, w: 8, h: 8 }
+      ],
+      xxs: [
         { i: '1', x: 0, y: 0, w: 6, h: 8 },
         { i: '2', x: 0, y: 8, w: 6, h: 8 },
         { i: '3', x: 0, y: 16, w: 6, h: 8 }
-      ],
-      xxs: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 0, y: 8, w: 4, h: 8 },
-        { i: '3', x: 0, y: 16, w: 4, h: 8 }
       ]
     };
 
@@ -166,12 +166,12 @@ export default function App() {
                { todos: [] }
     };
 
-    // Find a good position for the new widget
+    // Find a good position for the new widget - place it to the right of existing widgets
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
-      x: 9,
+      x: 12, // Start at column 12 (far right)
       y: 0,
-      w: 3,
+      w: 4,
       h: 8
     };
 
@@ -179,10 +179,10 @@ export default function App() {
     setLayouts(prev => ({
       ...prev,
       lg: [...(prev.lg || []), newLayoutItem],
-      md: [...(prev.md || []), { ...newLayoutItem, w: 3 }],
-      sm: [...(prev.sm || []), { ...newLayoutItem, w: 4 }],
-      xs: [...(prev.xs || []), { ...newLayoutItem, w: 6 }],
-      xxs: [...(prev.xxs || []), { ...newLayoutItem, w: 4 }]
+      md: [...(prev.md || []), { ...newLayoutItem, x: 12, w: 4 }],
+      sm: [...(prev.sm || []), { ...newLayoutItem, x: 12, w: 6 }],
+      xs: [...(prev.xs || []), { ...newLayoutItem, x: 0, w: 8 }],
+      xxs: [...(prev.xxs || []), { ...newLayoutItem, x: 0, w: 6 }]
     }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
@@ -279,13 +279,13 @@ export default function App() {
           layouts={layouts}
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }}
+          cols={{ lg: 24, md: 20, sm: 16, xs: 12, xxs: 8 }}
           rowHeight={40}
           margin={[8, 8]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType="vertical"
+          compactType={null}
           preventCollision={false}
           useCSSTransforms={true}
           allowOverlap={false}

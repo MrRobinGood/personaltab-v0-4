@@ -22,13 +22,47 @@
   height: 20px;
   bottom: 0;
   right: 0;
-  background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB2aWV3Qm94PSIwIDAgNiA2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZG90cyBmaWxsPSIjOTk5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTMgM0g2VjZIM1YzWiIvPgo8L3N2Zz4K');
+  background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB2aWV3Qm94PSIwIDAgNiA2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZG90cyBmaWxsPSIjODg4IiBkPSJtMTUgMTJMMTkgMTZIMTVWMTJaIi8+Cjwvc3ZnPgo=');
   background-position: bottom right;
   padding: 0 3px 3px 0;
   background-repeat: no-repeat;
   background-origin: content-box;
   box-sizing: border-box;
   cursor: se-resize;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: rgb(255, 0, 0);
+  opacity: 0.2;
+  transition-duration: 100ms;
+  z-index: 2;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-right: 2px solid rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.4);
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.1);
+  border: 2px dashed hsl(var(--primary) / 0.3);
+  border-radius: calc(var(--radius) - 2px);
 }
 
 /* Line clamp utility */
@@ -102,114 +136,33 @@
   }
   
   html {
-    /* Single uniform background for entire page */
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
     min-height: 100vh;
   }
   
   body {
     @apply text-foreground;
-    /* Inherit the same background to ensure uniformity */
     background: inherit !important;
     min-height: 100vh;
   }
   
-  /* Ensure all containers inherit the same background */
   #root {
     background: inherit !important;
     min-height: 100vh;
   }
 }
 
-/* React Grid Layout Styles */
+/* Full-width grid layout - use entire viewport */
 .react-grid-layout {
-  position: relative;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
 
+/* Allow widgets to be positioned anywhere */
 .react-grid-item {
-  transition: all 200ms ease;
-  transition-property: left, top;
-}
-
-.react-grid-item.cssTransforms {
-  transition-property: transform;
-}
-
-.react-grid-item > .react-resizable-handle {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  bottom: 0;
-  right: 0;
-  background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB2aWV3Qm94PSIwIDAgNiA2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZG90cyBmaWxsPSIjODg4IiBkPSJtMTUgMTJMMTkgMTZIMTVWMTJaIi8+Cjwvc3ZnPgo=');
-  background-position: bottom right;
-  padding: 0 3px 3px 0;
-  background-repeat: no-repeat;
-  background-origin: content-box;
-  box-sizing: border-box;
-  cursor: se-resize;
-}
-
-.react-grid-item.react-grid-placeholder {
-  background: rgb(255, 0, 0);
-  opacity: 0.2;
-  transition-duration: 100ms;
-  z-index: 2;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -o-user-select: none;
-  user-select: none;
-}
-
-.react-grid-item > .react-resizable-handle::after {
-  content: "";
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 5px;
-  height: 5px;
-  border-right: 2px solid rgba(0, 0, 0, 0.4);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.4);
-}
-
-.react-grid-item.react-draggable-dragging {
-  transition: none;
-  z-index: 3;
-}
-
-.react-grid-item.react-grid-placeholder {
-  background: hsl(var(--primary) / 0.1);
-  border: 2px dashed hsl(var(--primary) / 0.3);
-  border-radius: calc(var(--radius) - 2px);
-}
-
-/* Custom styles for PersonalTab */
-.layout {
-  min-height: 400px;
-}
-
-/* Ensure exact widget dimensions: 260px × 350px with 17px gutters */
-.react-grid-item {
-  box-sizing: border-box;
-}
-
-.react-grid-layout {
-  margin: 0 auto;
-  max-width: 848px; /* 3 × 260px + 4 × 17px */
-}
-
-/* Force widget dimensions for 3-column layout */
-@media (min-width: 768px) {
-  .react-grid-item {
-    width: 260px !important;
-    min-width: 260px !important;
-  }
-
-  .react-grid-item.react-grid-item {
-    height: 350px !important;
-    min-height: 350px !important;
-  }
+  min-width: 200px;
+  min-height: 250px;
 }
 
 /* Utility classes */
@@ -238,12 +191,6 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Focus styles for accessibility */
-.drag-handle:focus {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
 /* Animation for widget add/remove */
 .react-grid-item {
   animation: fadeIn 200ms ease-in-out;
@@ -258,22 +205,4 @@
     opacity: 1;
     transform: scale(1);
   }
-}
-
-/* Flexible grid layout that allows resizing and repositioning */
-.react-grid-layout {
-  margin: 0 auto;
-  min-width: 834px; /* Initial 3 × 260px + 2 × 17px */
-}
-
-/* Allow grid items to be flexible while maintaining minimum sizes */
-.react-grid-item {
-  min-width: 200px;
-  min-height: 250px;
-}
-
-/* Initial default sizing only - can be overridden by user resizing */
-.react-grid-item.initial-size {
-  width: 260px;
-  height: 350px;
 }
