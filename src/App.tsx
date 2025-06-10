@@ -79,19 +79,32 @@ export default function App() {
       }
     ];
 
-    // Fixed layout for all breakpoints - ensures widgets stay side by side
-    const fixedLayout = [
-      { i: '1', x: 0, y: 0, w: 4, h: 15 },
-      { i: '2', x: 4, y: 0, w: 4, h: 15 },
-      { i: '3', x: 8, y: 0, w: 4, h: 15 }
-    ];
-
     const defaultLayouts = {
-      lg: fixedLayout,
-      md: fixedLayout,
-      sm: fixedLayout,
-      xs: fixedLayout,
-      xxs: fixedLayout
+      lg: [
+        { i: '1', x: 0, y: 0, w: 4, h: 12 },
+        { i: '2', x: 4, y: 0, w: 4, h: 12 },
+        { i: '3', x: 8, y: 0, w: 4, h: 12 }
+      ],
+      md: [
+        { i: '1', x: 0, y: 0, w: 6, h: 12 },
+        { i: '2', x: 6, y: 0, w: 6, h: 12 },
+        { i: '3', x: 0, y: 12, w: 6, h: 12 }
+      ],
+      sm: [
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+      ],
+      xs: [
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+      ],
+      xxs: [
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+      ]
     };
 
     return { widgets: defaultWidgets, layouts: defaultLayouts };
@@ -156,9 +169,9 @@ export default function App() {
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
       x: 0,
-      y: 15,
+      y: 12,
       w: 4,
-      h: 15
+      h: 12
     };
 
     setWidgets([...widgets, newWidget]);
@@ -265,7 +278,7 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
-          rowHeight={25}
+          rowHeight={30}
           margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
@@ -277,7 +290,7 @@ export default function App() {
           draggableHandle=".drag-handle"
         >
           {widgets.map((widget) => (
-            <div key={widget.id} className="widget-container">
+            <div key={widget.id}>
               <WidgetCard
                 widget={widget}
                 onRemove={removeWidget}
@@ -328,7 +341,7 @@ function WidgetCard({
 
   return (
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
-      <CardHeader className="flex-shrink-0 pb-3">
+      <CardHeader className="flex-shrink-0 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
             <div className="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
@@ -371,13 +384,11 @@ function WidgetCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden pt-0 pb-4">
-        <div className="h-full">
-          {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
-          {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
-          {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
-          {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
-        </div>
+      <CardContent className="flex-1 overflow-hidden pt-0">
+        {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
+        {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
+        {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
+        {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
       </CardContent>
     </Card>
   );
