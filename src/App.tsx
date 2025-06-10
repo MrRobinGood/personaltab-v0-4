@@ -81,29 +81,29 @@ export default function App() {
 
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 13 },
-        { i: '2', x: 4, y: 0, w: 4, h: 13 },
-        { i: '3', x: 8, y: 0, w: 4, h: 13 }
+        { i: '1', x: 0, y: 0, w: 4, h: 12 },
+        { i: '2', x: 4, y: 0, w: 4, h: 12 },
+        { i: '3', x: 8, y: 0, w: 4, h: 12 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 6, h: 13 },
-        { i: '2', x: 6, y: 0, w: 6, h: 13 },
-        { i: '3', x: 0, y: 13, w: 6, h: 13 }
+        { i: '1', x: 0, y: 0, w: 6, h: 12 },
+        { i: '2', x: 6, y: 0, w: 6, h: 12 },
+        { i: '3', x: 0, y: 12, w: 6, h: 12 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 12, h: 13 },
-        { i: '2', x: 0, y: 13, w: 12, h: 13 },
-        { i: '3', x: 0, y: 26, w: 12, h: 13 }
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 13 },
-        { i: '2', x: 0, y: 13, w: 12, h: 13 },
-        { i: '3', x: 0, y: 26, w: 12, h: 13 }
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 13 },
-        { i: '2', x: 0, y: 13, w: 12, h: 13 },
-        { i: '3', x: 0, y: 26, w: 12, h: 13 }
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
       ]
     };
 
@@ -222,11 +222,11 @@ export default function App() {
 
     // Standard widget dimensions for all breakpoints - EXACTLY matching existing widgets
     const widgetDimensions = {
-      lg: { w: 4, h: 13 },
-      md: { w: 6, h: 13 },
-      sm: { w: 12, h: 13 },
-      xs: { w: 12, h: 13 },
-      xxs: { w: 12, h: 13 }
+      lg: { w: 4, h: 12 },
+      md: { w: 6, h: 12 },
+      sm: { w: 12, h: 12 },
+      xs: { w: 12, h: 12 },
+      xxs: { w: 12, h: 12 }
     };
 
     // Find positions for each breakpoint
@@ -354,13 +354,13 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
-          rowHeight={30}
+          rowHeight={32}
           margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType="vertical"
-          preventCollision={true}
+          compactType={null}
+          preventCollision={false}
           useCSSTransforms={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
