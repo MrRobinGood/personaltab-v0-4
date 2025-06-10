@@ -47,7 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v11';
+const STORAGE_KEY = 'personaltab-data-v12';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -56,7 +56,8 @@ export default function App() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [originalLayouts, setOriginalLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [originalPosition, setOriginalPosition] = useState<LayoutItem | null>(null);
 
   const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
     const defaultWidgets = [
@@ -122,7 +123,6 @@ export default function App() {
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
           setWidgets(data.widgets);
           setLayouts(data.layouts || {});
-          setOriginalLayouts(data.layouts || {});
           setNextId(data.nextId || data.widgets.length + 1);
           return;
         }
@@ -132,7 +132,6 @@ export default function App() {
       const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
       setLayouts(defaultLayouts);
-      setOriginalLayouts(defaultLayouts);
       setNextId(4);
       
     } catch (error) {
@@ -140,7 +139,6 @@ export default function App() {
       const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
       setLayouts(defaultLayouts);
-      setOriginalLayouts(defaultLayouts);
       setNextId(4);
     }
   }, []);
@@ -221,7 +219,6 @@ export default function App() {
 
     setWidgets(prev => [...prev, newWidget]);
     setLayouts(newLayouts);
-    setOriginalLayouts(newLayouts);
     setNextId(nextId + 1);
     setShowAddMenu(false);
   };
@@ -241,41 +238,6 @@ export default function App() {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  // Store original layouts when drag starts
-  const onDragStart = () => {
-    setOriginalLayouts({ ...layouts });
-  };
-
-  // Handle layout changes during drag
-  const onLayoutChange = (layout: LayoutItem[], allLayouts: { [key: string]: LayoutItem[] }) => {
-    setLayouts(allLayouts);
-  };
-
-  // Handle drag stop - check if position is valid
-  const onDragStop = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
-    // Check if the new position overlaps with any other widget
-    const currentBreakpoint = getCurrentBreakpoint();
-    const currentLayout = layouts[currentBreakpoint] || [];
-    
-    const hasCollision = currentLayout.some(item => {
-      if (item.i === newItem.i) return false; // Don't check against itself
-      
-      // Check for overlap
-      const xOverlap = newItem.x < item.x + item.w && newItem.x + newItem.w > item.x;
-      const yOverlap = newItem.y < item.y + item.h && newItem.y + newItem.h > item.y;
-      
-      return xOverlap && yOverlap;
-    });
-
-    if (hasCollision) {
-      // Revert to original position
-      setLayouts(originalLayouts);
-    } else {
-      // Position is valid, keep the new layout
-      setOriginalLayouts({ ...layouts });
-    }
-  };
-
   // Helper function to get current breakpoint
   const getCurrentBreakpoint = () => {
     const width = window.innerWidth;
@@ -284,6 +246,57 @@ export default function App() {
     if (width >= 768) return 'sm';
     if (width >= 480) return 'xs';
     return 'xxs';
+  };
+
+  // Check if two layout items overlap
+  const itemsOverlap = (item1: LayoutItem, item2: LayoutItem) => {
+    const xOverlap = item1.x < item2.x + item2.w && item1.x + item1.w > item2.x;
+    const yOverlap = item1.y < item2.y + item2.h && item1.y + item1.h > item2.y;
+    return xOverlap && yOverlap;
+  };
+
+  // Store original position when drag starts
+  const onDragStart = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
+    setDraggedItem(newItem.i);
+    setOriginalPosition(oldItem);
+  };
+
+  // Handle layout changes during drag - allow all changes
+  const onLayoutChange = (layout: LayoutItem[], allLayouts: { [key: string]: LayoutItem[] }) => {
+    setLayouts(allLayouts);
+  };
+
+  // Handle drag stop - validate final position
+  const onDragStop = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
+    const currentBreakpoint = getCurrentBreakpoint();
+    const currentLayout = layouts[currentBreakpoint] || [];
+    
+    // Check if the new position overlaps with any other widget
+    const hasCollision = currentLayout.some(item => {
+      if (item.i === newItem.i) return false; // Don't check against itself
+      return itemsOverlap(newItem, item);
+    });
+
+    if (hasCollision && originalPosition) {
+      // Revert to original position for all breakpoints
+      const revertedLayouts = { ...layouts };
+      Object.keys(revertedLayouts).forEach(breakpoint => {
+        const layoutForBreakpoint = revertedLayouts[breakpoint];
+        const itemIndex = layoutForBreakpoint.findIndex(item => item.i === newItem.i);
+        if (itemIndex !== -1) {
+          // For the current breakpoint, use the stored original position
+          if (breakpoint === currentBreakpoint && originalPosition) {
+            layoutForBreakpoint[itemIndex] = { ...originalPosition };
+          }
+          // For other breakpoints, we keep the existing position since we only track current breakpoint
+        }
+      });
+      setLayouts(revertedLayouts);
+    }
+
+    // Clear drag state
+    setDraggedItem(null);
+    setOriginalPosition(null);
   };
 
   return (
@@ -366,7 +379,7 @@ export default function App() {
           isDraggable={true}
           isResizable={true}
           compactType={null}
-          preventCollision={true}
+          preventCollision={false}
           useCSSTransforms={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
