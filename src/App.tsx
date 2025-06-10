@@ -318,10 +318,12 @@ export default function App() {
           isDraggable={true}
           isResizable={true}
           compactType={null}
-          preventCollision={false}
+          preventCollision={true}
           useCSSTransforms={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
+          autoSize={true}
+          verticalCompact={false}
         >
           {widgets.map((widget) => (
             <div key={widget.id}>
