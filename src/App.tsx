@@ -110,30 +110,57 @@ export default function App() {
     return { widgets: defaultWidgets, layouts: defaultLayouts };
   };
 
-  // Function to find the next available position for a new widget
+  // Improved function to find the next available position
   const findNextAvailablePosition = (existingLayouts: LayoutItem[], cols: number, widgetWidth: number, widgetHeight: number) => {
-    // Try to find a spot in existing rows first
-    for (let y = 0; y < 100; y += 15) { // Check every row (15 units high)
-      for (let x = 0; x <= cols - widgetWidth; x += widgetWidth) {
-        const position = { x, y, w: widgetWidth, h: widgetHeight };
-        
-        // Check if this position conflicts with any existing widget
-        const hasConflict = existingLayouts.some(layout => {
-          return !(
-            position.x >= layout.x + layout.w || // New widget is to the right
-            position.x + position.w <= layout.x || // New widget is to the left
-            position.y >= layout.y + layout.h || // New widget is below
-            position.y + position.h <= layout.y    // New widget is above
-          );
-        });
-        
-        if (!hasConflict) {
-          return position;
+    // Sort existing layouts by y position, then by x position
+    const sortedLayouts = [...existingLayouts].sort((a, b) => {
+      if (a.y === b.y) return a.x - b.x;
+      return a.y - b.y;
+    });
+
+    // Try to find a spot in each row, starting from the top
+    for (let row = 0; row < 100; row++) {
+      const y = row * widgetHeight;
+      
+      // Get all widgets in this row
+      const widgetsInRow = sortedLayouts.filter(layout => 
+        layout.y <= y && layout.y + layout.h > y
+      );
+
+      // If no widgets in this row, place at the beginning
+      if (widgetsInRow.length === 0) {
+        return { x: 0, y, w: widgetWidth, h: widgetHeight };
+      }
+
+      // Sort widgets in this row by x position
+      widgetsInRow.sort((a, b) => a.x - b.x);
+
+      // Check if we can fit at the beginning of the row
+      if (widgetsInRow[0].x >= widgetWidth) {
+        return { x: 0, y, w: widgetWidth, h: widgetHeight };
+      }
+
+      // Check gaps between widgets in this row
+      for (let i = 0; i < widgetsInRow.length - 1; i++) {
+        const currentWidget = widgetsInRow[i];
+        const nextWidget = widgetsInRow[i + 1];
+        const gapStart = currentWidget.x + currentWidget.w;
+        const gapSize = nextWidget.x - gapStart;
+
+        if (gapSize >= widgetWidth) {
+          return { x: gapStart, y, w: widgetWidth, h: widgetHeight };
         }
       }
+
+      // Check if we can fit at the end of the row
+      const lastWidget = widgetsInRow[widgetsInRow.length - 1];
+      const endPosition = lastWidget.x + lastWidget.w;
+      if (endPosition + widgetWidth <= cols) {
+        return { x: endPosition, y, w: widgetWidth, h: widgetHeight };
+      }
     }
-    
-    // If no spot found, place at the bottom
+
+    // Fallback: place at the bottom
     const maxY = existingLayouts.length > 0 ? Math.max(...existingLayouts.map(l => l.y + l.h)) : 0;
     return { x: 0, y: maxY, w: widgetWidth, h: widgetHeight };
   };
@@ -193,44 +220,58 @@ export default function App() {
              { todos: [] }
     };
 
-    // Find optimal positions for different breakpoints
-    const existingLayoutsLg = layouts.lg || [];
-    const existingLayoutsMd = layouts.md || [];
-    const existingLayoutsSm = layouts.sm || [];
-    
-    const newLayoutLg = findNextAvailablePosition(existingLayoutsLg, 12, 4, 15);
-    const newLayoutMd = findNextAvailablePosition(existingLayoutsMd, 12, 6, 15);
-    const newLayoutSm = findNextAvailablePosition(existingLayoutsSm, 12, 12, 15);
-
-    const newLayoutItems = {
-      lg: { i: String(nextId), ...newLayoutLg },
-      md: { i: String(nextId), ...newLayoutMd },
-      sm: { i: String(nextId), ...newLayoutSm },
-      xs: { i: String(nextId), ...newLayoutSm },
-      xxs: { i: String(nextId), ...newLayoutSm }
+    // Standard widget dimensions for all breakpoints
+    const widgetDimensions = {
+      lg: { w: 4, h: 15 },
+      md: { w: 6, h: 15 },
+      sm: { w: 12, h: 15 },
+      xs: { w: 12, h: 15 },
+      xxs: { w: 12, h: 15 }
     };
 
-    setWidgets([...widgets, newWidget]);
-    setLayouts(prev => ({
-      lg: [...(prev.lg || []), newLayoutItems.lg],
-      md: [...(prev.md || []), newLayoutItems.md],
-      sm: [...(prev.sm || []), newLayoutItems.sm],
-      xs: [...(prev.xs || []), newLayoutItems.xs],
-      xxs: [...(prev.xxs || []), newLayoutItems.xxs]
-    }));
+    // Find positions for each breakpoint
+    const newLayoutItems: { [key: string]: LayoutItem } = {};
+    
+    Object.entries(widgetDimensions).forEach(([breakpoint, dimensions]) => {
+      const existingLayouts = layouts[breakpoint] || [];
+      const cols = breakpoint === 'lg' ? 12 : breakpoint === 'md' ? 12 : 12;
+      
+      const position = findNextAvailablePosition(
+        existingLayouts, 
+        cols, 
+        dimensions.w, 
+        dimensions.h
+      );
+      
+      newLayoutItems[breakpoint] = {
+        i: String(nextId),
+        ...position
+      };
+    });
+
+    // Update widgets and layouts
+    setWidgets(prev => [...prev, newWidget]);
+    setLayouts(prev => {
+      const newLayouts = { ...prev };
+      Object.entries(newLayoutItems).forEach(([breakpoint, layoutItem]) => {
+        newLayouts[breakpoint] = [...(prev[breakpoint] || []), layoutItem];
+      });
+      return newLayouts;
+    });
+    
     setNextId(nextId + 1);
     setShowAddMenu(false);
   };
 
   const removeWidget = (id: string) => {
     setWidgets(prev => prev.filter(w => w.id !== id));
-    setLayouts(prev => ({
-      lg: (prev.lg || []).filter(item => item.i !== id),
-      md: (prev.md || []).filter(item => item.i !== id),
-      sm: (prev.sm || []).filter(item => item.i !== id),
-      xs: (prev.xs || []).filter(item => item.i !== id),
-      xxs: (prev.xxs || []).filter(item => item.i !== id)
-    }));
+    setLayouts(prev => {
+      const newLayouts = { ...prev };
+      Object.keys(newLayouts).forEach(breakpoint => {
+        newLayouts[breakpoint] = newLayouts[breakpoint].filter(item => item.i !== id);
+      });
+      return newLayouts;
+    });
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
@@ -318,8 +359,8 @@ export default function App() {
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType={null}
-          preventCollision={false}
+          compactType="vertical"
+          preventCollision={true}
           useCSSTransforms={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
