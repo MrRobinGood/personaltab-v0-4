@@ -231,7 +231,7 @@ export default function App() {
 
             {showAddMenu && (
               <div 
-                className="absolute right-0 top-0 mr-10 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
+                className="absolute right-0 -top-1 mr-10 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
                 onMouseEnter={() => setShowAddMenu(true)}
                 onMouseLeave={() => setShowAddMenu(false)}
               >
