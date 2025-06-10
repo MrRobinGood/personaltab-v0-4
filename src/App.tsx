@@ -79,11 +79,11 @@ export default function App() {
       }
     ];
 
-    // Fixed layout - all breakpoints use same layout for non-responsive behavior
+    // Fixed layout for all breakpoints - ensures widgets stay side by side
     const fixedLayout = [
-      { i: '1', x: 0, y: 0, w: 4, h: 12 },
-      { i: '2', x: 4, y: 0, w: 4, h: 12 },
-      { i: '3', x: 8, y: 0, w: 4, h: 12 }
+      { i: '1', x: 0, y: 0, w: 4, h: 15 },
+      { i: '2', x: 4, y: 0, w: 4, h: 15 },
+      { i: '3', x: 8, y: 0, w: 4, h: 15 }
     ];
 
     const defaultLayouts = {
@@ -156,9 +156,9 @@ export default function App() {
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
       x: 0,
-      y: 12,
+      y: 15,
       w: 4,
-      h: 12
+      h: 15
     };
 
     setWidgets([...widgets, newWidget]);
@@ -265,7 +265,7 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
-          rowHeight={30}
+          rowHeight={25}
           margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
@@ -277,7 +277,7 @@ export default function App() {
           draggableHandle=".drag-handle"
         >
           {widgets.map((widget) => (
-            <div key={widget.id}>
+            <div key={widget.id} className="widget-container">
               <WidgetCard
                 widget={widget}
                 onRemove={removeWidget}
@@ -328,7 +328,7 @@ function WidgetCard({
 
   return (
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
-      <CardHeader className="flex-shrink-0 pb-2">
+      <CardHeader className="flex-shrink-0 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
             <div className="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
@@ -371,11 +371,13 @@ function WidgetCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden pt-0">
-        {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
-        {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
-        {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
-        {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
+      <CardContent className="flex-1 overflow-hidden pt-0 pb-4">
+        <div className="h-full">
+          {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
+          {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
+          {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
+          {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
+        </div>
       </CardContent>
     </Card>
   );
