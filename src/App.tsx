@@ -225,14 +225,13 @@ export default function App() {
               size="sm" 
               className="w-9 h-9 p-0"
               onMouseEnter={() => setShowAddMenu(true)}
-              onMouseLeave={() => setTimeout(() => setShowAddMenu(false), 150)}
             >
               <Plus className="w-4 h-4" />
             </Button>
 
             {showAddMenu && (
               <div 
-                className="absolute right-full top-0 mr-2 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
+                className="absolute right-0 top-0 mr-10 bg-white border rounded-lg shadow-lg p-1 flex gap-1 z-50"
                 onMouseEnter={() => setShowAddMenu(true)}
                 onMouseLeave={() => setShowAddMenu(false)}
               >
