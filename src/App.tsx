@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
+import { Plus, Menu, X, ExternalLink, Check, Calendar, GripHorizontal } from "lucide-react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -375,12 +375,14 @@ function WidgetCard({
 
   return (
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
-      <CardHeader className="flex-shrink-0 pb-2">
+      {/* Draggable area above title */}
+      <div className="drag-handle cursor-move bg-gray-50/50 hover:bg-gray-100/70 transition-colors border-b border-gray-100 p-2 flex items-center justify-center group">
+        <GripHorizontal className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+      </div>
+
+      <CardHeader className="flex-shrink-0 pb-2 pt-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
-            <div className="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
-              <Menu className="w-3 h-3 text-gray-400" />
-            </div>
             {editingTitle === widget.id ? (
               <div className="flex items-center gap-1 flex-1">
                 <Input
