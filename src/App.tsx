@@ -1,19 +1,20 @@
 import type React from "react";
-import { useState, useEffect, useRef } from "react";
-import { Plus, Menu, X, ExternalLink, Check, Calendar, GripVertical } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
+import { Responsive, WidthProvider } from "react-grid-layout";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+const ResponsiveGridLayout = WidthProvider(Responsive);
+
 interface Widget {
   id: string;
   type: 'notes' | 'links' | 'todo' | 'rss';
   title: string;
   content: any;
-  position: { x: number; y: number };
-  size: { width: number; height: number };
 }
 
 interface Link {
@@ -38,56 +39,79 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-v9';
+interface LayoutItem {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const STORAGE_KEY = 'personaltab-data-v8';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [layouts, setLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
   const [nextId, setNextId] = useState(1);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [dragState, setDragState] = useState<{
-    isDragging: boolean;
-    widgetId: string | null;
-    startPos: { x: number; y: number };
-    offset: { x: number; y: number };
-  }>({
-    isDragging: false,
-    widgetId: null,
-    startPos: { x: 0, y: 0 },
-    offset: { x: 0, y: 0 }
-  });
 
-  const createDefaultWidgets = (): Widget[] => {
-    return [
+  const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
+    const defaultWidgets = [
       {
         id: '1',
         type: 'notes' as const,
         title: 'Notes',
-        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets to move them.\nResize by dragging corners.\nClick titles to edit them.' },
-        position: { x: 50, y: 50 },
-        size: { width: 310, height: 380 }
+        content: { text: 'Welcome to PersonalTab!\n\nDrag widgets to move them.\nResize by dragging corners.\nClick titles to edit them.' }
       },
       {
         id: '2',
         type: 'todo' as const,
         title: 'List',
-        content: { todos: [] },
-        position: { x: 380, y: 50 },
-        size: { width: 310, height: 380 }
+        content: { todos: [] }
       },
       {
         id: '3',
         type: 'links' as const,
         title: 'Links',
-        content: { links: [] },
-        position: { x: 710, y: 50 },
-        size: { width: 310, height: 380 }
+        content: { links: [] }
       }
     ];
+
+    // Create layouts for 3 widgets side by side - using 3 columns out of 12
+    const defaultLayouts = {
+      lg: [
+        { i: '1', x: 0, y: 0, w: 3, h: 10 },
+        { i: '2', x: 3, y: 0, w: 3, h: 10 },
+        { i: '3', x: 6, y: 0, w: 3, h: 10 }
+      ],
+      md: [
+        { i: '1', x: 0, y: 0, w: 3, h: 10 },
+        { i: '2', x: 3, y: 0, w: 3, h: 10 },
+        { i: '3', x: 6, y: 0, w: 3, h: 10 }
+      ],
+      sm: [
+        { i: '1', x: 0, y: 0, w: 4, h: 10 },
+        { i: '2', x: 4, y: 0, w: 4, h: 10 },
+        { i: '3', x: 8, y: 0, w: 4, h: 10 }
+      ],
+      xs: [
+        { i: '1', x: 0, y: 0, w: 6, h: 10 },
+        { i: '2', x: 0, y: 10, w: 6, h: 10 },
+        { i: '3', x: 0, y: 20, w: 6, h: 10 }
+      ],
+      xxs: [
+        { i: '1', x: 0, y: 0, w: 4, h: 10 },
+        { i: '2', x: 0, y: 10, w: 4, h: 10 },
+        { i: '3', x: 0, y: 20, w: 4, h: 10 }
+      ]
+    };
+
+    return { widgets: defaultWidgets, layouts: defaultLayouts };
   };
 
-  // Initialize widgets
+  // Initialize widgets and layouts
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -96,30 +120,33 @@ export default function App() {
         const data = JSON.parse(saved);
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
           setWidgets(data.widgets);
+          setLayouts(data.layouts || {});
           setNextId(data.nextId || data.widgets.length + 1);
           return;
         }
       }
       
       // No valid saved data, create defaults
-      const defaultWidgets = createDefaultWidgets();
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
+      setLayouts(defaultLayouts);
       setNextId(4);
       
     } catch (error) {
       console.error('Error loading saved data:', error);
-      const defaultWidgets = createDefaultWidgets();
+      const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
+      setLayouts(defaultLayouts);
       setNextId(4);
     }
   }, []);
 
-  // Save data whenever widgets change
+  // Save data whenever widgets or layouts change
   useEffect(() => {
     if (widgets.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, nextId }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ widgets, layouts, nextId }));
     }
-  }, [widgets, nextId]);
+  }, [widgets, layouts, nextId]);
 
   const addWidget = (type: Widget['type']) => {
     const titleMap = {
@@ -136,87 +163,52 @@ export default function App() {
       content: type === 'notes' ? { text: '' } : 
                type === 'links' ? { links: [] } : 
                type === 'rss' ? { url: '', items: [] } :
-               { todos: [] },
-      position: { x: 1040, y: 50 }, // Position to the right
-      size: { width: 310, height: 380 }
+               { todos: [] }
+    };
+
+    // Find a good position for the new widget
+    const newLayoutItem: LayoutItem = {
+      i: String(nextId),
+      x: 9,
+      y: 0,
+      w: 3,
+      h: 10
     };
 
     setWidgets([...widgets, newWidget]);
+    setLayouts(prev => ({
+      ...prev,
+      lg: [...(prev.lg || []), newLayoutItem],
+      md: [...(prev.md || []), { ...newLayoutItem, w: 3 }],
+      sm: [...(prev.sm || []), { ...newLayoutItem, w: 4 }],
+      xs: [...(prev.xs || []), { ...newLayoutItem, w: 6 }],
+      xxs: [...(prev.xxs || []), { ...newLayoutItem, w: 4 }]
+    }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
   };
 
   const removeWidget = (id: string) => {
     setWidgets(widgets.filter(w => w.id !== id));
+    setLayouts(prev => ({
+      lg: (prev.lg || []).filter(item => item.i !== id),
+      md: (prev.md || []).filter(item => item.i !== id),
+      sm: (prev.sm || []).filter(item => item.i !== id),
+      xs: (prev.xs || []).filter(item => item.i !== id),
+      xxs: (prev.xxs || []).filter(item => item.i !== id)
+    }));
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  const handleMouseDown = (e: React.MouseEvent, widgetId: string) => {
-    const widget = widgets.find(w => w.id === widgetId);
-    if (!widget) return;
-
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const offset = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-
-    setDragState({
-      isDragging: true,
-      widgetId,
-      startPos: { x: e.clientX, y: e.clientY },
-      offset
-    });
-
-    e.preventDefault();
+  const onLayoutChange = (layout: LayoutItem[], layouts: { [key: string]: LayoutItem[] }) => {
+    setLayouts(layouts);
   };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!dragState.isDragging || !dragState.widgetId) return;
-
-    const newX = e.clientX - dragState.offset.x;
-    const newY = e.clientY - dragState.offset.y;
-
-    // Constrain to viewport
-    const constrainedX = Math.max(0, Math.min(newX, window.innerWidth - 310));
-    const constrainedY = Math.max(0, Math.min(newY, window.innerHeight - 380));
-
-    updateWidget(dragState.widgetId, {
-      position: { x: constrainedX, y: constrainedY }
-    });
-  };
-
-  const handleMouseUp = () => {
-    setDragState({
-      isDragging: false,
-      widgetId: null,
-      startPos: { x: 0, y: 0 },
-      offset: { x: 0, y: 0 }
-    });
-  };
-
-  // Add global mouse event listeners
-  useEffect(() => {
-    if (dragState.isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = 'none';
-      document.body.style.cursor = 'grabbing';
-
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.userSelect = '';
-        document.body.style.cursor = '';
-      };
-    }
-  }, [dragState.isDragging, dragState.widgetId, dragState.offset]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
@@ -281,52 +273,62 @@ export default function App() {
         </div>
       </div>
 
-      <div className="relative w-full h-full">
-        {widgets.map((widget) => (
-          <DraggableWidget
-            key={widget.id}
-            widget={widget}
-            onRemove={removeWidget}
-            onUpdate={updateWidget}
-            onMouseDown={handleMouseDown}
-            editingTitle={editingTitle}
-            setEditingTitle={setEditingTitle}
-            editTitleValue={editTitleValue}
-            setEditTitleValue={setEditTitleValue}
-            isDragging={dragState.widgetId === widget.id}
-          />
-        ))}
+      <div className="p-4">
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={layouts}
+          onLayoutChange={onLayoutChange}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }}
+          rowHeight={38}
+          margin={[8, 8]}
+          containerPadding={[0, 0]}
+          isDraggable={true}
+          isResizable={true}
+          compactType={null}
+          preventCollision={true}
+          useCSSTransforms={true}
+          allowOverlap={false}
+          draggableHandle=".drag-handle"
+        >
+          {widgets.map((widget) => (
+            <div key={widget.id}>
+              <WidgetCard
+                widget={widget}
+                onRemove={removeWidget}
+                onUpdate={updateWidget}
+                editingTitle={editingTitle}
+                setEditingTitle={setEditingTitle}
+                editTitleValue={editTitleValue}
+                setEditTitleValue={setEditTitleValue}
+              />
+            </div>
+          ))}
+        </ResponsiveGridLayout>
       </div>
     </div>
   );
 }
 
-interface DraggableWidgetProps {
+interface WidgetCardProps {
   widget: Widget;
   onRemove: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Widget>) => void;
-  onMouseDown: (e: React.MouseEvent, widgetId: string) => void;
   editingTitle: string | null;
   setEditingTitle: (id: string | null) => void;
   editTitleValue: string;
   setEditTitleValue: (value: string) => void;
-  isDragging: boolean;
 }
 
-function DraggableWidget({
+function WidgetCard({
   widget,
   onRemove,
   onUpdate,
-  onMouseDown,
   editingTitle,
   setEditingTitle,
   editTitleValue,
-  setEditTitleValue,
-  isDragging
-}: DraggableWidgetProps) {
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
-
+  setEditTitleValue
+}: WidgetCardProps) {
   const startEdit = () => {
     setEditingTitle(widget.id);
     setEditTitleValue(widget.title);
@@ -339,128 +341,55 @@ function DraggableWidget({
     setEditingTitle(null);
   };
 
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsResizing(true);
-    setResizeStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: widget.size.width,
-      height: widget.size.height
-    });
-  };
-
-  const handleResizeMove = (e: MouseEvent) => {
-    if (!isResizing) return;
-
-    const deltaX = e.clientX - resizeStart.x;
-    const deltaY = e.clientY - resizeStart.y;
-
-    const newWidth = Math.max(250, resizeStart.width + deltaX);
-    const newHeight = Math.max(300, resizeStart.height + deltaY);
-
-    onUpdate(widget.id, {
-      size: { width: newWidth, height: newHeight }
-    });
-  };
-
-  const handleResizeEnd = () => {
-    setIsResizing(false);
-  };
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleResizeMove);
-      document.addEventListener('mouseup', handleResizeEnd);
-      document.body.style.cursor = 'se-resize';
-
-      return () => {
-        document.removeEventListener('mousemove', handleResizeMove);
-        document.removeEventListener('mouseup', handleResizeEnd);
-        document.body.style.cursor = '';
-      };
-    }
-  }, [isResizing, resizeStart]);
-
   return (
-    <div
-      className={`absolute transition-shadow duration-200 ${isDragging ? 'z-50 shadow-2xl' : 'z-10'}`}
-      style={{
-        left: widget.position.x,
-        top: widget.position.y,
-        width: widget.size.width,
-        height: widget.size.height,
-      }}
-    >
-      <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all relative">
-        <CardHeader className="flex-shrink-0 pb-2 cursor-grab active:cursor-grabbing">
-          <div 
-            className="flex items-center justify-between"
-            onMouseDown={(e) => onMouseDown(e, widget.id)}
-          >
-            <div className="flex items-center gap-2 flex-1">
-              <GripVertical className="w-4 h-4 text-gray-400" />
-              {editingTitle === widget.id ? (
-                <div className="flex items-center gap-1 flex-1">
-                  <Input
-                    value={editTitleValue}
-                    onChange={(e) => setEditTitleValue(e.target.value)}
-                    className="text-sm h-6"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEdit();
-                      if (e.key === 'Escape') setEditingTitle(null);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    autoFocus
-                  />
-                  <Button size="sm" variant="ghost" onClick={saveEdit}>
-                    <Check className="w-3 h-3" />
-                  </Button>
-                </div>
-              ) : (
-                <CardTitle
-                  className="text-sm cursor-pointer hover:text-blue-600 flex-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startEdit();
+    <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
+      <CardHeader className="flex-shrink-0 pb-2 drag-handle cursor-move">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-1">
+            {editingTitle === widget.id ? (
+              <div className="flex items-center gap-1 flex-1">
+                <Input
+                  value={editTitleValue}
+                  onChange={(e) => setEditTitleValue(e.target.value)}
+                  className="text-sm h-6"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEdit();
+                    if (e.key === 'Escape') setEditingTitle(null);
                   }}
-                >
-                  {widget.title}
-                </CardTitle>
-              )}
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove(widget.id);
-              }}
-            >
-              <X className="w-3 h-3" />
-            </Button>
+                  autoFocus
+                />
+                <Button size="sm" variant="ghost" onClick={saveEdit}>
+                  <Check className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <CardTitle
+                className="text-sm cursor-pointer hover:text-blue-600 flex-1"
+                onClick={startEdit}
+              >
+                {widget.title}
+              </CardTitle>
+            )}
           </div>
-        </CardHeader>
 
-        <CardContent className="flex-1 overflow-hidden pt-0">
-          {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
-          {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
-          {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
-          {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
-        </CardContent>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
+            onClick={() => onRemove(widget.id)}
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      </CardHeader>
 
-        {/* Resize handle */}
-        <div
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-gray-300 hover:bg-gray-400 transition-colors"
-          style={{
-            clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)'
-          }}
-          onMouseDown={handleResizeStart}
-        />
-      </Card>
-    </div>
+      <CardContent className="flex-1 overflow-hidden pt-0">
+        {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
+        {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
+        {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
+        {widget.type === 'rss' && <RSSWidget widget={widget} onUpdate={onUpdate} />}
+      </CardContent>
+    </Card>
   );
 }
 
