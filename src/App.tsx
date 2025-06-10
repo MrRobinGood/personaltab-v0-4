@@ -81,29 +81,29 @@ export default function App() {
 
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 15 },
-        { i: '2', x: 4, y: 0, w: 4, h: 15 },
-        { i: '3', x: 8, y: 0, w: 4, h: 15 }
+        { i: '1', x: 0, y: 0, w: 4, h: 13 },
+        { i: '2', x: 4, y: 0, w: 4, h: 13 },
+        { i: '3', x: 8, y: 0, w: 4, h: 13 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 6, h: 15 },
-        { i: '2', x: 6, y: 0, w: 6, h: 15 },
-        { i: '3', x: 0, y: 15, w: 6, h: 15 }
+        { i: '1', x: 0, y: 0, w: 6, h: 13 },
+        { i: '2', x: 6, y: 0, w: 6, h: 13 },
+        { i: '3', x: 0, y: 13, w: 6, h: 13 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 12, h: 15 },
-        { i: '2', x: 0, y: 15, w: 12, h: 15 },
-        { i: '3', x: 0, y: 30, w: 12, h: 15 }
+        { i: '1', x: 0, y: 0, w: 12, h: 13 },
+        { i: '2', x: 0, y: 13, w: 12, h: 13 },
+        { i: '3', x: 0, y: 26, w: 12, h: 13 }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 15 },
-        { i: '2', x: 0, y: 15, w: 12, h: 15 },
-        { i: '3', x: 0, y: 30, w: 12, h: 15 }
+        { i: '1', x: 0, y: 0, w: 12, h: 13 },
+        { i: '2', x: 0, y: 13, w: 12, h: 13 },
+        { i: '3', x: 0, y: 26, w: 12, h: 13 }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 15 },
-        { i: '2', x: 0, y: 15, w: 12, h: 15 },
-        { i: '3', x: 0, y: 30, w: 12, h: 15 }
+        { i: '1', x: 0, y: 0, w: 12, h: 13 },
+        { i: '2', x: 0, y: 13, w: 12, h: 13 },
+        { i: '3', x: 0, y: 26, w: 12, h: 13 }
       ]
     };
 
@@ -220,13 +220,13 @@ export default function App() {
              { todos: [] }
     };
 
-    // Standard widget dimensions for all breakpoints
+    // Standard widget dimensions for all breakpoints - EXACTLY matching existing widgets
     const widgetDimensions = {
-      lg: { w: 4, h: 15 },
-      md: { w: 6, h: 15 },
-      sm: { w: 12, h: 15 },
-      xs: { w: 12, h: 15 },
-      xxs: { w: 12, h: 15 }
+      lg: { w: 4, h: 13 },
+      md: { w: 6, h: 13 },
+      sm: { w: 12, h: 13 },
+      xs: { w: 12, h: 13 },
+      xxs: { w: 12, h: 13 }
     };
 
     // Find positions for each breakpoint
@@ -234,7 +234,7 @@ export default function App() {
     
     Object.entries(widgetDimensions).forEach(([breakpoint, dimensions]) => {
       const existingLayouts = layouts[breakpoint] || [];
-      const cols = breakpoint === 'lg' ? 12 : breakpoint === 'md' ? 12 : 12;
+      const cols = 12; // All breakpoints use 12 columns
       
       const position = findNextAvailablePosition(
         existingLayouts, 
