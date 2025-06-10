@@ -47,7 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v10';
+const STORAGE_KEY = 'personaltab-data-v11';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -56,6 +56,7 @@ export default function App() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [originalLayouts, setOriginalLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
 
   const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
     const defaultWidgets = [
@@ -121,6 +122,7 @@ export default function App() {
         if (data.widgets && Array.isArray(data.widgets) && data.widgets.length > 0) {
           setWidgets(data.widgets);
           setLayouts(data.layouts || {});
+          setOriginalLayouts(data.layouts || {});
           setNextId(data.nextId || data.widgets.length + 1);
           return;
         }
@@ -130,6 +132,7 @@ export default function App() {
       const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
       setLayouts(defaultLayouts);
+      setOriginalLayouts(defaultLayouts);
       setNextId(4);
       
     } catch (error) {
@@ -137,6 +140,7 @@ export default function App() {
       const { widgets: defaultWidgets, layouts: defaultLayouts } = createDefaultWidgets();
       setWidgets(defaultWidgets);
       setLayouts(defaultLayouts);
+      setOriginalLayouts(defaultLayouts);
       setNextId(4);
     }
   }, []);
@@ -217,6 +221,7 @@ export default function App() {
 
     setWidgets(prev => [...prev, newWidget]);
     setLayouts(newLayouts);
+    setOriginalLayouts(newLayouts);
     setNextId(nextId + 1);
     setShowAddMenu(false);
   };
@@ -236,8 +241,49 @@ export default function App() {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  const onLayoutChange = (layout: LayoutItem[], layouts: { [key: string]: LayoutItem[] }) => {
-    setLayouts(layouts);
+  // Store original layouts when drag starts
+  const onDragStart = () => {
+    setOriginalLayouts({ ...layouts });
+  };
+
+  // Handle layout changes during drag
+  const onLayoutChange = (layout: LayoutItem[], allLayouts: { [key: string]: LayoutItem[] }) => {
+    setLayouts(allLayouts);
+  };
+
+  // Handle drag stop - check if position is valid
+  const onDragStop = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
+    // Check if the new position overlaps with any other widget
+    const currentBreakpoint = getCurrentBreakpoint();
+    const currentLayout = layouts[currentBreakpoint] || [];
+    
+    const hasCollision = currentLayout.some(item => {
+      if (item.i === newItem.i) return false; // Don't check against itself
+      
+      // Check for overlap
+      const xOverlap = newItem.x < item.x + item.w && newItem.x + newItem.w > item.x;
+      const yOverlap = newItem.y < item.y + item.h && newItem.y + newItem.h > item.y;
+      
+      return xOverlap && yOverlap;
+    });
+
+    if (hasCollision) {
+      // Revert to original position
+      setLayouts(originalLayouts);
+    } else {
+      // Position is valid, keep the new layout
+      setOriginalLayouts({ ...layouts });
+    }
+  };
+
+  // Helper function to get current breakpoint
+  const getCurrentBreakpoint = () => {
+    const width = window.innerWidth;
+    if (width >= 1200) return 'lg';
+    if (width >= 996) return 'md';
+    if (width >= 768) return 'sm';
+    if (width >= 480) return 'xs';
+    return 'xxs';
   };
 
   return (
@@ -310,6 +356,8 @@ export default function App() {
           className="layout"
           layouts={layouts}
           onLayoutChange={onLayoutChange}
+          onDragStart={onDragStart}
+          onDragStop={onDragStop}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
           rowHeight={30}
