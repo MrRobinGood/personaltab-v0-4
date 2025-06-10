@@ -110,6 +110,34 @@ export default function App() {
     return { widgets: defaultWidgets, layouts: defaultLayouts };
   };
 
+  // Function to find the next available position for a new widget
+  const findNextAvailablePosition = (existingLayouts: LayoutItem[], cols: number, widgetWidth: number, widgetHeight: number) => {
+    // Try to find a spot in existing rows first
+    for (let y = 0; y < 100; y += 15) { // Check every row (15 units high)
+      for (let x = 0; x <= cols - widgetWidth; x += widgetWidth) {
+        const position = { x, y, w: widgetWidth, h: widgetHeight };
+        
+        // Check if this position conflicts with any existing widget
+        const hasConflict = existingLayouts.some(layout => {
+          return !(
+            position.x >= layout.x + layout.w || // New widget is to the right
+            position.x + position.w <= layout.x || // New widget is to the left
+            position.y >= layout.y + layout.h || // New widget is below
+            position.y + position.h <= layout.y    // New widget is above
+          );
+        });
+        
+        if (!hasConflict) {
+          return position;
+        }
+      }
+    }
+    
+    // If no spot found, place at the bottom
+    const maxY = existingLayouts.length > 0 ? Math.max(...existingLayouts.map(l => l.y + l.h)) : 0;
+    return { x: 0, y: maxY, w: widgetWidth, h: widgetHeight };
+  };
+
   // Initialize widgets and layouts
   useEffect(() => {
     try {
@@ -165,32 +193,37 @@ export default function App() {
              { todos: [] }
     };
 
-    // Find the next available position
-    const existingLayouts = layouts.lg || [];
-    const maxY = existingLayouts.length > 0 ? Math.max(...existingLayouts.map(l => l.y + l.h)) : 0;
+    // Find optimal positions for different breakpoints
+    const existingLayoutsLg = layouts.lg || [];
+    const existingLayoutsMd = layouts.md || [];
+    const existingLayoutsSm = layouts.sm || [];
+    
+    const newLayoutLg = findNextAvailablePosition(existingLayoutsLg, 12, 4, 15);
+    const newLayoutMd = findNextAvailablePosition(existingLayoutsMd, 12, 6, 15);
+    const newLayoutSm = findNextAvailablePosition(existingLayoutsSm, 12, 12, 15);
 
-    const newLayoutItem: LayoutItem = {
-      i: String(nextId),
-      x: 0,
-      y: maxY,
-      w: 4,
-      h: 15
+    const newLayoutItems = {
+      lg: { i: String(nextId), ...newLayoutLg },
+      md: { i: String(nextId), ...newLayoutMd },
+      sm: { i: String(nextId), ...newLayoutSm },
+      xs: { i: String(nextId), ...newLayoutSm },
+      xxs: { i: String(nextId), ...newLayoutSm }
     };
 
     setWidgets([...widgets, newWidget]);
     setLayouts(prev => ({
-      lg: [...(prev.lg || []), newLayoutItem],
-      md: [...(prev.md || []), { ...newLayoutItem, w: 6 }],
-      sm: [...(prev.sm || []), { ...newLayoutItem, w: 12 }],
-      xs: [...(prev.xs || []), { ...newLayoutItem, w: 12 }],
-      xxs: [...(prev.xxs || []), { ...newLayoutItem, w: 12 }]
+      lg: [...(prev.lg || []), newLayoutItems.lg],
+      md: [...(prev.md || []), newLayoutItems.md],
+      sm: [...(prev.sm || []), newLayoutItems.sm],
+      xs: [...(prev.xs || []), newLayoutItems.xs],
+      xxs: [...(prev.xxs || []), newLayoutItems.xxs]
     }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
   };
 
   const removeWidget = (id: string) => {
-    setWidgets(widgets.filter(w => w.id !== id));
+    setWidgets(prev => prev.filter(w => w.id !== id));
     setLayouts(prev => ({
       lg: (prev.lg || []).filter(item => item.i !== id),
       md: (prev.md || []).filter(item => item.i !== id),
@@ -285,7 +318,7 @@ export default function App() {
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType="vertical"
+          compactType={null}
           preventCollision={false}
           useCSSTransforms={true}
           allowOverlap={false}
@@ -343,10 +376,10 @@ function WidgetCard({
 
   return (
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
-      <CardHeader className="flex-shrink-0 pb-2 drag-handle cursor-move">
+      <CardHeader className="flex-shrink-0 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
-            <div className="p-1 hover:bg-gray-100 rounded">
+            <div className="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
               <Menu className="w-3 h-3 text-gray-400" />
             </div>
             {editingTitle === widget.id ? (
