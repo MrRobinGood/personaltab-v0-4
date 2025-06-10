@@ -79,11 +79,11 @@ export default function App() {
       }
     ];
 
-    // Fixed layout for all breakpoints - 3 widgets side by side, each 4 columns wide
+    // Fixed layout - all breakpoints use same layout for non-responsive behavior
     const fixedLayout = [
-      { i: '1', x: 0, y: 0, w: 4, h: 8 },
-      { i: '2', x: 4, y: 0, w: 4, h: 8 },
-      { i: '3', x: 8, y: 0, w: 4, h: 8 }
+      { i: '1', x: 0, y: 0, w: 4, h: 12 },
+      { i: '2', x: 4, y: 0, w: 4, h: 12 },
+      { i: '3', x: 8, y: 0, w: 4, h: 12 }
     ];
 
     const defaultLayouts = {
@@ -147,18 +147,18 @@ export default function App() {
       type,
       title: titleMap[type],
       content: type === 'notes' ? { text: '' } : 
-               type === 'links' ? { links: [] } : 
-               type === 'rss' ? { url: '', items: [] } :
-               { todos: [] }
+             type === 'links' ? { links: [] } : 
+             type === 'rss' ? { url: '', items: [] } :
+             { todos: [] }
     };
 
     // Add new widget below existing ones
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
       x: 0,
-      y: 8,
+      y: 12,
       w: 4,
-      h: 8
+      h: 12
     };
 
     setWidgets([...widgets, newWidget]);
@@ -265,8 +265,8 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
-          rowHeight={40}
-          margin={[8, 8]}
+          rowHeight={30}
+          margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
