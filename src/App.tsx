@@ -47,20 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v9';
-
-// RADICAL SOLUTION: Fixed dimensions that match exactly 380x310px
-const WIDGET_CONFIG = {
-  // Grid units to achieve 380x310px (with 16px margins)
-  width: 4,    // 4 columns = ~380px width
-  height: 10,  // 10 rows = ~310px height
-  
-  // Row height calculation: 310px / 10 rows = 31px per row
-  rowHeight: 31,
-  
-  // Margin between widgets
-  margin: 16
-};
+const STORAGE_KEY = 'personaltab-data-v10';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -92,53 +79,36 @@ export default function App() {
       }
     ];
 
-    // RADICAL SOLUTION: Hardcoded perfect positions
+    // Simple, consistent layouts that work with React Grid Layout
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: WIDGET_CONFIG.width, h: WIDGET_CONFIG.height },
-        { i: '2', x: 4, y: 0, w: WIDGET_CONFIG.width, h: WIDGET_CONFIG.height },
-        { i: '3', x: 8, y: 0, w: WIDGET_CONFIG.width, h: WIDGET_CONFIG.height }
+        { i: '1', x: 0, y: 0, w: 4, h: 12 },
+        { i: '2', x: 4, y: 0, w: 4, h: 12 },
+        { i: '3', x: 8, y: 0, w: 4, h: 12 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 6, h: WIDGET_CONFIG.height },
-        { i: '2', x: 6, y: 0, w: 6, h: WIDGET_CONFIG.height },
-        { i: '3', x: 0, y: WIDGET_CONFIG.height, w: 6, h: WIDGET_CONFIG.height }
+        { i: '1', x: 0, y: 0, w: 6, h: 12 },
+        { i: '2', x: 6, y: 0, w: 6, h: 12 },
+        { i: '3', x: 0, y: 12, w: 6, h: 12 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 12, h: WIDGET_CONFIG.height },
-        { i: '2', x: 0, y: WIDGET_CONFIG.height, w: 12, h: WIDGET_CONFIG.height },
-        { i: '3', x: 0, y: WIDGET_CONFIG.height * 2, w: 12, h: WIDGET_CONFIG.height }
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 12, h: WIDGET_CONFIG.height },
-        { i: '2', x: 0, y: WIDGET_CONFIG.height, w: 12, h: WIDGET_CONFIG.height },
-        { i: '3', x: 0, y: WIDGET_CONFIG.height * 2, w: 12, h: WIDGET_CONFIG.height }
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 12, h: WIDGET_CONFIG.height },
-        { i: '2', x: 0, y: WIDGET_CONFIG.height, w: 12, h: WIDGET_CONFIG.height },
-        { i: '3', x: 0, y: WIDGET_CONFIG.height * 2, w: 12, h: WIDGET_CONFIG.height }
+        { i: '1', x: 0, y: 0, w: 12, h: 12 },
+        { i: '2', x: 0, y: 12, w: 12, h: 12 },
+        { i: '3', x: 0, y: 24, w: 12, h: 12 }
       ]
     };
 
     return { widgets: defaultWidgets, layouts: defaultLayouts };
-  };
-
-  // RADICAL SOLUTION: Simple sequential positioning
-  const getNextPosition = (existingLayouts: LayoutItem[]): LayoutItem => {
-    const widgetCount = existingLayouts.length;
-    
-    // For large screens: 3 widgets per row (positions 0, 4, 8)
-    const row = Math.floor(widgetCount / 3);
-    const col = widgetCount % 3;
-    
-    return {
-      i: '', // Will be set by caller
-      x: col * 4, // Positions: 0, 4, 8
-      y: row * WIDGET_CONFIG.height, // Each row is exactly WIDGET_CONFIG.height units apart
-      w: WIDGET_CONFIG.width,
-      h: WIDGET_CONFIG.height
-    };
   };
 
   // Initialize widgets and layouts
@@ -196,41 +166,55 @@ export default function App() {
              { todos: [] }
     };
 
-    // RADICAL SOLUTION: Create layouts for all breakpoints with exact positioning
+    // Calculate next position for each breakpoint
     const newLayouts = { ...layouts };
     
-    // Large screens (lg): 3 widgets per row
+    // For lg: 3 widgets per row (4 columns each)
     const lgLayouts = newLayouts.lg || [];
-    const lgPosition = getNextPosition(lgLayouts);
-    lgPosition.i = String(nextId);
-    newLayouts.lg = [...lgLayouts, lgPosition];
+    const lgCount = lgLayouts.length;
+    const lgRow = Math.floor(lgCount / 3);
+    const lgCol = lgCount % 3;
+    const lgY = lgRow * 12; // Each widget is 12 units tall
+    const lgX = lgCol * 4;  // Each widget is 4 units wide
     
-    // Medium screens (md): 2 widgets per row
+    newLayouts.lg = [...lgLayouts, {
+      i: String(nextId),
+      x: lgX,
+      y: lgY,
+      w: 4,
+      h: 12
+    }];
+    
+    // For md: 2 widgets per row (6 columns each)
     const mdLayouts = newLayouts.md || [];
     const mdCount = mdLayouts.length;
     const mdRow = Math.floor(mdCount / 2);
     const mdCol = mdCount % 2;
+    const mdY = mdRow * 12;
+    const mdX = mdCol * 6;
+    
     newLayouts.md = [...mdLayouts, {
       i: String(nextId),
-      x: mdCol * 6,
-      y: mdRow * WIDGET_CONFIG.height,
+      x: mdX,
+      y: mdY,
       w: 6,
-      h: WIDGET_CONFIG.height
+      h: 12
     }];
     
-    // Small screens and below: 1 widget per row
+    // For sm, xs, xxs: 1 widget per row (full width)
     ['sm', 'xs', 'xxs'].forEach(breakpoint => {
       const existingLayouts = newLayouts[breakpoint] || [];
+      const count = existingLayouts.length;
+      
       newLayouts[breakpoint] = [...existingLayouts, {
         i: String(nextId),
         x: 0,
-        y: existingLayouts.length * WIDGET_CONFIG.height,
+        y: count * 12,
         w: 12,
-        h: WIDGET_CONFIG.height
+        h: 12
       }];
     });
 
-    // Update state
     setWidgets(prev => [...prev, newWidget]);
     setLayouts(newLayouts);
     setNextId(nextId + 1);
@@ -328,8 +312,8 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
-          rowHeight={WIDGET_CONFIG.rowHeight}
-          margin={[WIDGET_CONFIG.margin, WIDGET_CONFIG.margin]}
+          rowHeight={30}
+          margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
