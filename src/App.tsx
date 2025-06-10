@@ -49,6 +49,16 @@ interface LayoutItem {
 
 const STORAGE_KEY = 'personaltab-data-v8';
 
+// Standard widget dimensions - EXACTLY the same for all widgets
+const WIDGET_HEIGHT = 13; // Grid units
+const WIDGET_WIDTHS = {
+  lg: 4,  // 4 columns on large screens
+  md: 6,  // 6 columns on medium screens  
+  sm: 12, // Full width on small screens
+  xs: 12, // Full width on extra small screens
+  xxs: 12 // Full width on extra extra small screens
+};
+
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [layouts, setLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
@@ -81,88 +91,74 @@ export default function App() {
 
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 12 },
-        { i: '2', x: 4, y: 0, w: 4, h: 12 },
-        { i: '3', x: 8, y: 0, w: 4, h: 12 }
+        { i: '1', x: 0, y: 0, w: WIDGET_WIDTHS.lg, h: WIDGET_HEIGHT },
+        { i: '2', x: 4, y: 0, w: WIDGET_WIDTHS.lg, h: WIDGET_HEIGHT },
+        { i: '3', x: 8, y: 0, w: WIDGET_WIDTHS.lg, h: WIDGET_HEIGHT }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 6, h: 12 },
-        { i: '2', x: 6, y: 0, w: 6, h: 12 },
-        { i: '3', x: 0, y: 12, w: 6, h: 12 }
+        { i: '1', x: 0, y: 0, w: WIDGET_WIDTHS.md, h: WIDGET_HEIGHT },
+        { i: '2', x: 6, y: 0, w: WIDGET_WIDTHS.md, h: WIDGET_HEIGHT },
+        { i: '3', x: 0, y: WIDGET_HEIGHT, w: WIDGET_WIDTHS.md, h: WIDGET_HEIGHT }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+        { i: '1', x: 0, y: 0, w: WIDGET_WIDTHS.sm, h: WIDGET_HEIGHT },
+        { i: '2', x: 0, y: WIDGET_HEIGHT, w: WIDGET_WIDTHS.sm, h: WIDGET_HEIGHT },
+        { i: '3', x: 0, y: WIDGET_HEIGHT * 2, w: WIDGET_WIDTHS.sm, h: WIDGET_HEIGHT }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+        { i: '1', x: 0, y: 0, w: WIDGET_WIDTHS.xs, h: WIDGET_HEIGHT },
+        { i: '2', x: 0, y: WIDGET_HEIGHT, w: WIDGET_WIDTHS.xs, h: WIDGET_HEIGHT },
+        { i: '3', x: 0, y: WIDGET_HEIGHT * 2, w: WIDGET_WIDTHS.xs, h: WIDGET_HEIGHT }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+        { i: '1', x: 0, y: 0, w: WIDGET_WIDTHS.xxs, h: WIDGET_HEIGHT },
+        { i: '2', x: 0, y: WIDGET_HEIGHT, w: WIDGET_WIDTHS.xxs, h: WIDGET_HEIGHT },
+        { i: '3', x: 0, y: WIDGET_HEIGHT * 2, w: WIDGET_WIDTHS.xxs, h: WIDGET_HEIGHT }
       ]
     };
 
     return { widgets: defaultWidgets, layouts: defaultLayouts };
   };
 
-  // Improved function to find the next available position
-  const findNextAvailablePosition = (existingLayouts: LayoutItem[], cols: number, widgetWidth: number, widgetHeight: number) => {
-    // Sort existing layouts by y position, then by x position
+  // Function to find the next available position for a new widget
+  const findNextAvailablePosition = (existingLayouts: LayoutItem[], breakpoint: string) => {
+    const widgetWidth = WIDGET_WIDTHS[breakpoint as keyof typeof WIDGET_WIDTHS];
+    const widgetHeight = WIDGET_HEIGHT;
+    const totalCols = 12;
+    const widgetsPerRow = Math.floor(totalCols / widgetWidth);
+
+    // Sort existing layouts by row, then by column
     const sortedLayouts = [...existingLayouts].sort((a, b) => {
-      if (a.y === b.y) return a.x - b.x;
-      return a.y - b.y;
+      const rowA = Math.floor(a.y / widgetHeight);
+      const rowB = Math.floor(b.y / widgetHeight);
+      if (rowA !== rowB) return rowA - rowB;
+      return a.x - b.x;
     });
 
-    // Try to find a spot in each row, starting from the top
-    for (let row = 0; row < 100; row++) {
-      const y = row * widgetHeight;
-      
-      // Get all widgets in this row
-      const widgetsInRow = sortedLayouts.filter(layout => 
-        layout.y <= y && layout.y + layout.h > y
+    // Find the first available slot
+    let targetRow = 0;
+    let targetCol = 0;
+
+    while (true) {
+      const targetY = targetRow * widgetHeight;
+      const targetX = targetCol * widgetWidth;
+
+      // Check if this position is occupied
+      const isOccupied = sortedLayouts.some(layout => 
+        layout.x === targetX && layout.y === targetY
       );
 
-      // If no widgets in this row, place at the beginning
-      if (widgetsInRow.length === 0) {
-        return { x: 0, y, w: widgetWidth, h: widgetHeight };
+      if (!isOccupied) {
+        return { x: targetX, y: targetY, w: widgetWidth, h: widgetHeight };
       }
 
-      // Sort widgets in this row by x position
-      widgetsInRow.sort((a, b) => a.x - b.x);
-
-      // Check if we can fit at the beginning of the row
-      if (widgetsInRow[0].x >= widgetWidth) {
-        return { x: 0, y, w: widgetWidth, h: widgetHeight };
-      }
-
-      // Check gaps between widgets in this row
-      for (let i = 0; i < widgetsInRow.length - 1; i++) {
-        const currentWidget = widgetsInRow[i];
-        const nextWidget = widgetsInRow[i + 1];
-        const gapStart = currentWidget.x + currentWidget.w;
-        const gapSize = nextWidget.x - gapStart;
-
-        if (gapSize >= widgetWidth) {
-          return { x: gapStart, y, w: widgetWidth, h: widgetHeight };
-        }
-      }
-
-      // Check if we can fit at the end of the row
-      const lastWidget = widgetsInRow[widgetsInRow.length - 1];
-      const endPosition = lastWidget.x + lastWidget.w;
-      if (endPosition + widgetWidth <= cols) {
-        return { x: endPosition, y, w: widgetWidth, h: widgetHeight };
+      // Move to next position
+      targetCol++;
+      if (targetCol >= widgetsPerRow) {
+        targetCol = 0;
+        targetRow++;
       }
     }
-
-    // Fallback: place at the bottom
-    const maxY = existingLayouts.length > 0 ? Math.max(...existingLayouts.map(l => l.y + l.h)) : 0;
-    return { x: 0, y: maxY, w: widgetWidth, h: widgetHeight };
   };
 
   // Initialize widgets and layouts
@@ -220,28 +216,12 @@ export default function App() {
              { todos: [] }
     };
 
-    // Standard widget dimensions for all breakpoints - EXACTLY matching existing widgets
-    const widgetDimensions = {
-      lg: { w: 4, h: 12 },
-      md: { w: 6, h: 12 },
-      sm: { w: 12, h: 12 },
-      xs: { w: 12, h: 12 },
-      xxs: { w: 12, h: 12 }
-    };
-
-    // Find positions for each breakpoint
+    // Create layout items for all breakpoints
     const newLayoutItems: { [key: string]: LayoutItem } = {};
     
-    Object.entries(widgetDimensions).forEach(([breakpoint, dimensions]) => {
+    Object.keys(WIDGET_WIDTHS).forEach(breakpoint => {
       const existingLayouts = layouts[breakpoint] || [];
-      const cols = 12; // All breakpoints use 12 columns
-      
-      const position = findNextAvailablePosition(
-        existingLayouts, 
-        cols, 
-        dimensions.w, 
-        dimensions.h
-      );
+      const position = findNextAvailablePosition(existingLayouts, breakpoint);
       
       newLayoutItems[breakpoint] = {
         i: String(nextId),
@@ -354,7 +334,7 @@ export default function App() {
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
-          rowHeight={32}
+          rowHeight={30}
           margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
