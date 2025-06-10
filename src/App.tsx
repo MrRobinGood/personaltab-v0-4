@@ -286,8 +286,8 @@ export default function App() {
           containerPadding={[0, 0]}
           isDraggable={true}
           isResizable={true}
-          compactType={null}
-          preventCollision={true}
+          compactType="vertical"
+          preventCollision={false}
           useCSSTransforms={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
@@ -344,10 +344,10 @@ function WidgetCard({
 
   return (
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
-      <CardHeader className="flex-shrink-0 pb-2">
+      <CardHeader className="flex-shrink-0 pb-2 drag-handle cursor-move">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
-            <div className="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
+            <div className="p-1 hover:bg-gray-100 rounded">
               <Menu className="w-3 h-3 text-gray-400" />
             </div>
             {editingTitle === widget.id ? (
