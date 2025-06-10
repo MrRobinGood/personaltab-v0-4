@@ -47,7 +47,7 @@ interface LayoutItem {
   h: number;
 }
 
-const STORAGE_KEY = 'personaltab-data-v13';
+const STORAGE_KEY = 'personaltab-data-v14';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -56,6 +56,11 @@ export default function App() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
+  
+  // Track original positions to restore them if needed
+  const [originalLayouts, setOriginalLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 
   const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
     const defaultWidgets = [
@@ -236,9 +241,55 @@ export default function App() {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  // Simple layout change handler - no collision detection, just save the changes
+  // Handle drag start - save original positions
+  const onDragStart = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
+    setIsDragging(true);
+    setDraggedItemId(oldItem.i);
+    setOriginalLayouts({ ...layouts });
+  };
+
+  // Handle drag stop - decide whether to keep new position or revert
+  const onDragStop = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
+    setIsDragging(false);
+    setDraggedItemId(null);
+    
+    // Check if the item was actually moved to a significantly different position
+    const originalItem = originalLayouts[getCurrentBreakpoint()]?.find(item => item.i === oldItem.i);
+    
+    if (originalItem) {
+      const xDiff = Math.abs(newItem.x - originalItem.x);
+      const yDiff = Math.abs(newItem.y - originalItem.y);
+      
+      // If the movement is minimal (just from hover effects), revert to original position
+      if (xDiff < 2 && yDiff < 2) {
+        setLayouts(originalLayouts);
+        return;
+      }
+    }
+    
+    // Otherwise, keep the new layout
+    setLayouts(prev => ({
+      ...prev,
+      [getCurrentBreakpoint()]: layout
+    }));
+  };
+
+  // Get current breakpoint (simplified)
+  const getCurrentBreakpoint = () => {
+    const width = window.innerWidth;
+    if (width >= 1200) return 'lg';
+    if (width >= 996) return 'md';
+    if (width >= 768) return 'sm';
+    if (width >= 480) return 'xs';
+    return 'xxs';
+  };
+
+  // Handle layout changes during drag - be more conservative
   const onLayoutChange = (layout: LayoutItem[], allLayouts: { [key: string]: LayoutItem[] }) => {
-    setLayouts(allLayouts);
+    // Only update layouts if we're not dragging, or if this is the final drop
+    if (!isDragging) {
+      setLayouts(allLayouts);
+    }
   };
 
   return (
@@ -311,6 +362,8 @@ export default function App() {
           className="layout"
           layouts={layouts}
           onLayoutChange={onLayoutChange}
+          onDragStart={onDragStart}
+          onDragStop={onDragStop}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
           rowHeight={30}
@@ -319,8 +372,7 @@ export default function App() {
           isDraggable={true}
           isResizable={true}
           compactType={null}
-          preventCollision={false}
-          useCSSTransforms={true}
+          preventCollision={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
           autoSize={true}
