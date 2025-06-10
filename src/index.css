@@ -159,10 +159,22 @@
   margin: 0 !important;
 }
 
-/* Allow widgets to be positioned anywhere */
+/* Widget dimensions: 310px width × 380px height */
 .react-grid-item {
-  min-width: 200px;
-  min-height: 250px;
+  min-width: 250px;
+  min-height: 300px;
+}
+
+/* Ensure widgets start at correct size: 310px × 380px */
+.react-grid-item {
+  width: 310px !important;
+  height: 380px !important;
+}
+
+/* Allow resizing from the default size */
+.react-grid-item.react-resizable {
+  min-width: 250px !important;
+  min-height: 300px !important;
 }
 
 /* Utility classes */

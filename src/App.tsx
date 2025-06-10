@@ -79,32 +79,32 @@ export default function App() {
       }
     ];
 
-    // Create layouts for 3 widgets side by side - using more columns for flexibility
+    // Create layouts for 3 widgets side by side - 310px width = ~8 grid units, 380px height = ~10 grid units
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 4, y: 0, w: 4, h: 8 },
-        { i: '3', x: 8, y: 0, w: 4, h: 8 }
+        { i: '1', x: 0, y: 0, w: 8, h: 10 },
+        { i: '2', x: 8, y: 0, w: 8, h: 10 },
+        { i: '3', x: 16, y: 0, w: 8, h: 10 }
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 4, h: 8 },
-        { i: '2', x: 4, y: 0, w: 4, h: 8 },
-        { i: '3', x: 8, y: 0, w: 4, h: 8 }
+        { i: '1', x: 0, y: 0, w: 8, h: 10 },
+        { i: '2', x: 8, y: 0, w: 8, h: 10 },
+        { i: '3', x: 16, y: 0, w: 8, h: 10 }
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 6, h: 8 },
-        { i: '2', x: 6, y: 0, w: 6, h: 8 },
-        { i: '3', x: 0, y: 8, w: 6, h: 8 }
+        { i: '1', x: 0, y: 0, w: 8, h: 10 },
+        { i: '2', x: 8, y: 0, w: 8, h: 10 },
+        { i: '3', x: 0, y: 10, w: 8, h: 10 }
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 8, h: 8 },
-        { i: '2', x: 0, y: 8, w: 8, h: 8 },
-        { i: '3', x: 0, y: 16, w: 8, h: 8 }
+        { i: '1', x: 0, y: 0, w: 12, h: 10 },
+        { i: '2', x: 0, y: 10, w: 12, h: 10 },
+        { i: '3', x: 0, y: 20, w: 12, h: 10 }
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 6, h: 8 },
-        { i: '2', x: 0, y: 8, w: 6, h: 8 },
-        { i: '3', x: 0, y: 16, w: 6, h: 8 }
+        { i: '1', x: 0, y: 0, w: 8, h: 10 },
+        { i: '2', x: 0, y: 10, w: 8, h: 10 },
+        { i: '3', x: 0, y: 20, w: 8, h: 10 }
       ]
     };
 
@@ -161,28 +161,28 @@ export default function App() {
       type,
       title: titleMap[type],
       content: type === 'notes' ? { text: '' } : 
-               type === 'links' ? { links: [] } : 
-               type === 'rss' ? { url: '', items: [] } :
-               { todos: [] }
+             type === 'links' ? { links: [] } : 
+             type === 'rss' ? { url: '', items: [] } :
+             { todos: [] }
     };
 
     // Find a good position for the new widget - place it to the right of existing widgets
     const newLayoutItem: LayoutItem = {
       i: String(nextId),
-      x: 12, // Start at column 12 (far right)
+      x: 24, // Start at column 24 (far right)
       y: 0,
-      w: 4,
-      h: 8
+      w: 8, // 310px width
+      h: 10 // 380px height
     };
 
     setWidgets([...widgets, newWidget]);
     setLayouts(prev => ({
       ...prev,
       lg: [...(prev.lg || []), newLayoutItem],
-      md: [...(prev.md || []), { ...newLayoutItem, x: 12, w: 4 }],
-      sm: [...(prev.sm || []), { ...newLayoutItem, x: 12, w: 6 }],
-      xs: [...(prev.xs || []), { ...newLayoutItem, x: 0, w: 8 }],
-      xxs: [...(prev.xxs || []), { ...newLayoutItem, x: 0, w: 6 }]
+      md: [...(prev.md || []), { ...newLayoutItem, x: 24, w: 8 }],
+      sm: [...(prev.sm || []), { ...newLayoutItem, x: 16, w: 8 }],
+      xs: [...(prev.xs || []), { ...newLayoutItem, x: 0, y: 30, w: 12 }],
+      xxs: [...(prev.xxs || []), { ...newLayoutItem, x: 0, y: 30, w: 8 }]
     }));
     setNextId(nextId + 1);
     setShowAddMenu(false);
@@ -279,8 +279,8 @@ export default function App() {
           layouts={layouts}
           onLayoutChange={onLayoutChange}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 24, md: 20, sm: 16, xs: 12, xxs: 8 }}
-          rowHeight={40}
+          cols={{ lg: 32, md: 32, sm: 24, xs: 12, xxs: 8 }}
+          rowHeight={38}
           margin={[8, 8]}
           containerPadding={[0, 0]}
           isDraggable={true}
