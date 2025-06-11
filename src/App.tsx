@@ -47,6 +47,11 @@ const STORAGE_KEY = 'personaltab-data-fixed-v1';
 const WIDGET_WIDTH = 380;
 const WIDGET_HEIGHT = 310;
 const WIDGET_MARGIN = 20;
+const GRID_SIZE = 20; // Snap to grid for alignment
+
+// Calculate container width to prevent horizontal overflow
+const WIDGETS_PER_ROW = 3;
+const CONTAINER_WIDTH = (WIDGET_WIDTH + WIDGET_MARGIN) * WIDGETS_PER_ROW;
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -57,6 +62,8 @@ export default function App() {
   const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [maxZIndex, setMaxZIndex] = useState(3);
+  const [dragPreview, setDragPreview] = useState<{ x: number; y: number } | null>(null);
+  const [affectedWidgets, setAffectedWidgets] = useState<string[]>([]);
 
   const createDefaultWidgets = (): Widget[] => {
     return [
@@ -133,22 +140,29 @@ export default function App() {
     }
   }, [widgets, nextId]);
 
-  // Find next available position for new widget
-  const findNextPosition = (): { x: number; y: number } => {
-    const positions = widgets.map(w => ({ x: w.x, y: w.y, width: w.width, height: w.height }));
+  // Snap to grid function
+  const snapToGrid = (value: number): number => {
+    return Math.round(value / GRID_SIZE) * GRID_SIZE;
+  };
+
+  // Find next available aligned position for new widget
+  const findNextAlignedPosition = (excludeId?: string): { x: number; y: number } => {
+    const positions = widgets
+      .filter(w => w.id !== excludeId)
+      .map(w => ({ x: w.x, y: w.y, width: w.width, height: w.height }));
     
-    // Try positions in a grid pattern
+    // Try positions in a grid pattern with proper alignment
     for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 10; col++) {
+      for (let col = 0; col < WIDGETS_PER_ROW; col++) {
         const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
         const y = row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
         // Check if this position overlaps with any existing widget
         const overlaps = positions.some(pos => 
-          x < pos.x + pos.width &&
-          x + WIDGET_WIDTH > pos.x &&
-          y < pos.y + pos.height &&
-          y + WIDGET_HEIGHT > pos.y
+          x < pos.x + pos.width + WIDGET_MARGIN &&
+          x + WIDGET_WIDTH + WIDGET_MARGIN > pos.x &&
+          y < pos.y + pos.height + WIDGET_MARGIN &&
+          y + WIDGET_HEIGHT + WIDGET_MARGIN > pos.y
         );
         
         if (!overlaps) {
@@ -162,6 +176,17 @@ export default function App() {
     return { x: 0, y: maxY + WIDGET_MARGIN };
   };
 
+  // Check for widget overlaps during drag
+  const getOverlappingWidgets = (draggedId: string, x: number, y: number, width: number, height: number) => {
+    return widgets.filter(w => 
+      w.id !== draggedId &&
+      x < w.x + w.width &&
+      x + width > w.x &&
+      y < w.y + w.height &&
+      y + height > w.y
+    );
+  };
+
   const addWidget = (type: Widget['type']) => {
     const titleMap = {
       'notes': 'Notes',
@@ -170,7 +195,7 @@ export default function App() {
       'rss': 'RSS Feed'
     };
 
-    const position = findNextPosition();
+    const position = findNextAlignedPosition();
     const newZIndex = maxZIndex + 1;
 
     const newWidget: Widget = {
@@ -231,41 +256,61 @@ export default function App() {
     if (!container) return;
     
     const containerRect = container.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - containerRect.left - dragOffset.x);
-    const y = Math.max(0, e.clientY - containerRect.top - dragOffset.y);
+    const rawX = e.clientX - containerRect.left - dragOffset.x;
+    const rawY = e.clientY - containerRect.top - dragOffset.y;
     
+    // Constrain to container bounds
+    const maxX = CONTAINER_WIDTH - WIDGET_WIDTH;
+    const x = Math.max(0, Math.min(maxX, snapToGrid(rawX)));
+    const y = Math.max(0, snapToGrid(rawY));
+    
+    // Update drag preview
+    setDragPreview({ x, y });
+    
+    // Find overlapping widgets and show visual feedback
+    const draggedWidgetData = widgets.find(w => w.id === draggedWidget);
+    if (draggedWidgetData) {
+      const overlapping = getOverlappingWidgets(draggedWidget, x, y, draggedWidgetData.width, draggedWidgetData.height);
+      setAffectedWidgets(overlapping.map(w => w.id));
+    }
+    
+    // Update widget position with smooth animation
     updateWidget(draggedWidget, { x, y });
   };
 
   const handleMouseUp = () => {
     if (!draggedWidget) return;
     
-    // Check for collisions and reposition overlapping widgets
+    // Get final position
     const draggedWidgetData = widgets.find(w => w.id === draggedWidget);
     if (!draggedWidgetData) return;
     
-    const overlappingWidgets = widgets.filter(w => 
-      w.id !== draggedWidget &&
-      w.x < draggedWidgetData.x + draggedWidgetData.width &&
-      w.x + w.width > draggedWidgetData.x &&
-      w.y < draggedWidgetData.y + draggedWidgetData.height &&
-      w.y + w.height > draggedWidgetData.y
+    // Move overlapping widgets to aligned positions
+    const overlappingWidgets = getOverlappingWidgets(
+      draggedWidget, 
+      draggedWidgetData.x, 
+      draggedWidgetData.y, 
+      draggedWidgetData.width, 
+      draggedWidgetData.height
     );
     
-    // Move overlapping widgets to next available positions
+    // Reposition overlapping widgets to aligned grid positions
     overlappingWidgets.forEach(widget => {
-      const newPosition = findNextPosition();
+      const newPosition = findNextAlignedPosition(widget.id);
       updateWidget(widget.id, newPosition);
     });
     
+    // Clean up drag state
     setDraggedWidget(null);
+    setDragPreview(null);
+    setAffectedWidgets([]);
   };
 
   // Handle resize
   const handleResize = (widgetId: string, newWidth: number, newHeight: number) => {
     updateWidget(widgetId, { 
-      width: Math.max(200, newWidth), 
-      height: Math.max(150, newHeight) 
+      width: Math.max(200, snapToGrid(newWidth)), 
+      height: Math.max(150, snapToGrid(newHeight))
     });
   };
 
@@ -274,13 +319,15 @@ export default function App() {
     if (draggedWidget) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = 'none'; // Prevent text selection during drag
       
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = '';
       };
     }
-  }, [draggedWidget, dragOffset]);
+  }, [draggedWidget, dragOffset, widgets]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -349,8 +396,12 @@ export default function App() {
 
       <div 
         id="widget-container"
-        className="relative p-4"
-        style={{ minHeight: 'calc(100vh - 80px)', minWidth: '1200px' }}
+        className="relative p-4 overflow-hidden"
+        style={{ 
+          minHeight: 'calc(100vh - 80px)', 
+          width: CONTAINER_WIDTH + 40, // Add padding
+          maxWidth: CONTAINER_WIDTH + 40
+        }}
       >
         {widgets.map((widget) => (
           <WidgetCard
@@ -365,8 +416,23 @@ export default function App() {
             editTitleValue={editTitleValue}
             setEditTitleValue={setEditTitleValue}
             isDragging={draggedWidget === widget.id}
+            isAffected={affectedWidgets.includes(widget.id)}
           />
         ))}
+        
+        {/* Drag preview overlay */}
+        {dragPreview && draggedWidget && (
+          <div
+            className="absolute border-2 border-blue-400 border-dashed bg-blue-100/30 rounded-xl pointer-events-none"
+            style={{
+              left: dragPreview.x,
+              top: dragPreview.y,
+              width: widgets.find(w => w.id === draggedWidget)?.width || WIDGET_WIDTH,
+              height: widgets.find(w => w.id === draggedWidget)?.height || WIDGET_HEIGHT,
+              zIndex: 9999
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -383,6 +449,7 @@ interface WidgetCardProps {
   editTitleValue: string;
   setEditTitleValue: (value: string) => void;
   isDragging: boolean;
+  isAffected: boolean;
 }
 
 function WidgetCard({
@@ -395,7 +462,8 @@ function WidgetCard({
   setEditingTitle,
   editTitleValue,
   setEditTitleValue,
-  isDragging
+  isDragging,
+  isAffected
 }: WidgetCardProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
@@ -455,20 +523,23 @@ function WidgetCard({
 
   return (
     <div
-      className={`absolute bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all rounded-xl ${
-        isDragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab'
+      className={`absolute bg-white/95 backdrop-blur-sm shadow-lg border-2 rounded-xl transition-all duration-200 ${
+        isDragging ? 'cursor-grabbing shadow-2xl scale-105 border-blue-400' : 
+        isAffected ? 'border-orange-400 shadow-orange-200 animate-pulse' :
+        'cursor-grab hover:border-blue-200'
       }`}
       style={{
         left: widget.x,
         top: widget.y,
         width: widget.width,
         height: widget.height,
-        zIndex: widget.zIndex
+        zIndex: widget.zIndex,
+        transform: isDragging ? 'rotate(2deg)' : 'rotate(0deg)'
       }}
       onMouseDown={(e) => onMouseDown(e, widget.id)}
     >
       {/* Header - Full width drag area */}
-      <div className="flex items-center justify-between p-3 border-b bg-gray-50/50 rounded-t-xl">
+      <div className="flex items-center justify-between p-3 border-b bg-gray-50/50 rounded-t-xl cursor-grab">
         <div className="flex items-center gap-2 flex-1">
           <Menu className="w-3 h-3 text-gray-400" />
           {editingTitle === widget.id ? (
@@ -520,7 +591,7 @@ function WidgetCard({
 
       {/* Resize handle */}
       <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize no-drag"
+        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize no-drag hover:bg-blue-200 rounded-tl-lg"
         onMouseDown={handleResizeStart}
         style={{
           background: 'linear-gradient(-45deg, transparent 30%, #ccc 30%, #ccc 40%, transparent 40%, transparent 60%, #ccc 60%, #ccc 70%, transparent 70%)'

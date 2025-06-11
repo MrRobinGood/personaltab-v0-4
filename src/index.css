@@ -76,6 +76,7 @@
     /* Single uniform background for entire page */
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
     min-height: 100vh;
+    overflow-x: hidden; /* Prevent horizontal scroll */
   }
   
   body {
@@ -83,12 +84,14 @@
     /* Inherit the same background to ensure uniformity */
     background: inherit !important;
     min-height: 100vh;
+    overflow-x: hidden; /* Prevent horizontal scroll */
   }
   
   /* Ensure all containers inherit the same background */
   #root {
     background: inherit !important;
     min-height: 100vh;
+    overflow-x: hidden; /* Prevent horizontal scroll */
   }
 }
 
@@ -129,9 +132,10 @@
   outline-offset: 2px;
 }
 
-/* Animation for widget add/remove */
+/* Smooth animations for widget interactions */
 .widget-card {
   animation: fadeIn 200ms ease-in-out;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes fadeIn {
@@ -145,12 +149,9 @@
   }
 }
 
-/* Prevent text selection during drag */
+/* Smooth drag animations */
 .dragging {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+  transition: transform 100ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Cursor styles */
@@ -165,4 +166,33 @@
 /* No drag areas */
 .no-drag {
   pointer-events: auto;
+}
+
+/* Visual feedback for affected widgets */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+/* Grid snap visual feedback */
+.snap-grid {
+  background-image: 
+    linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Improved resize handle */
+.resize-handle {
+  transition: all 200ms ease;
+}
+
+.resize-handle:hover {
+  background-color: rgba(59, 130, 246, 0.2);
+  transform: scale(1.1);
 }
