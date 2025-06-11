@@ -1,6 +1,6 @@
 import type React from "react";
-import { useState, useEffect } from "react";
-import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Menu, X, ExternalLink, Check, Calendar, Bold, Italic } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -698,24 +698,77 @@ function WidgetCard({
 
 function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: string, updates: Partial<Widget>) => void }) {
   const [content, setContent] = useState(widget.content.text || '');
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setContent(widget.content.text || '');
   }, [widget.content.text]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    setContent(newContent);
-    onUpdate(widget.id, { content: { text: newContent } });
+  const handleContentChange = () => {
+    if (editorRef.current) {
+      const newContent = editorRef.current.innerHTML;
+      setContent(newContent);
+      onUpdate(widget.id, { content: { text: newContent } });
+    }
+  };
+
+  const formatText = (command: string) => {
+    document.execCommand(command, false);
+    handleContentChange();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Handle Ctrl+B for bold and Ctrl+I for italic
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') {
+        e.preventDefault();
+        formatText('bold');
+      } else if (e.key === 'i') {
+        e.preventDefault();
+        formatText('italic');
+      }
+    }
   };
 
   return (
-    <div className="h-full">
-      <Textarea
-        value={content}
-        onChange={handleChange}
+    <div className="h-full flex flex-col">
+      {/* Formatting toolbar */}
+      <div className="flex items-center gap-1 mb-2 pb-2 border-b border-gray-200">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 hover:bg-gray-200"
+          onClick={() => formatText('bold')}
+          title="Bold (Ctrl+B)"
+        >
+          <Bold className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 hover:bg-gray-200"
+          onClick={() => formatText('italic')}
+          title="Italic (Ctrl+I)"
+        >
+          <Italic className="w-3 h-3" />
+        </Button>
+      </div>
+
+      {/* Rich text editor */}
+      <div
+        ref={editorRef}
+        contentEditable
+        className="flex-1 outline-none text-sm leading-relaxed overflow-y-auto"
+        style={{ 
+          minHeight: '100px',
+          wordWrap: 'break-word',
+          whiteSpace: 'pre-wrap'
+        }}
+        onInput={handleContentChange}
+        onKeyDown={handleKeyDown}
+        dangerouslySetInnerHTML={{ __html: content }}
+        suppressContentEditableWarning={true}
         placeholder="Start typing your notes..."
-        className="h-full resize-none border-0 bg-transparent focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
       />
     </div>
   );
