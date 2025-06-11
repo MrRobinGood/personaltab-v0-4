@@ -621,7 +621,7 @@ function WidgetCard({
       className={`absolute bg-white/95 backdrop-blur-sm shadow-lg border-2 rounded-xl transition-all duration-200 ${
         isDragging ? 'cursor-grabbing shadow-2xl scale-105 border-blue-400' : 
         isAffected ? 'border-orange-400 shadow-orange-200 animate-pulse' :
-        'cursor-grab hover:border-blue-200'
+        'hover:border-blue-200'
       }`}
       style={{
         left: widget.x,
@@ -631,10 +631,16 @@ function WidgetCard({
         zIndex: widget.zIndex,
         transform: isDragging ? 'rotate(2deg)' : 'rotate(0deg)'
       }}
-      onMouseDown={(e) => onMouseDown(e, widget.id)}
     >
-      {/* Header - Full width drag area */}
-      <div className="flex items-center justify-between p-3 border-b bg-gray-50/50 rounded-t-xl cursor-grab">
+      {/* Extended drag area - 5px more vertical space */}
+      <div 
+        className="absolute top-0 left-0 right-0 h-12 cursor-move"
+        onMouseDown={(e) => onMouseDown(e, widget.id)}
+        style={{ cursor: 'move' }}
+      />
+
+      {/* Header - Full width with increased height */}
+      <div className="flex items-center justify-between px-3 py-3 border-b bg-gray-50/50 rounded-t-xl h-12">
         <div className="flex items-center gap-2 flex-1">
           <Menu className="w-3 h-3 text-gray-400" />
           {editingTitle === widget.id ? (
@@ -740,7 +746,8 @@ function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
         style={{ 
           minHeight: '100px',
           wordWrap: 'break-word',
-          whiteSpace: 'pre-wrap'
+          whiteSpace: 'pre-wrap',
+          cursor: 'text' // Text editing cursor for Notes widget
         }}
         onInput={handleContentChange}
         onKeyDown={handleKeyDown}
