@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Menu, X, ExternalLink, Check, Calendar, Bold, Italic } from "lucide-react";
+import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -731,34 +731,12 @@ function NotesWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Formatting toolbar */}
-      <div className="flex items-center gap-1 mb-2 pb-2 border-b border-gray-200">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 hover:bg-gray-200"
-          onClick={() => formatText('bold')}
-          title="Bold (Ctrl+B)"
-        >
-          <Bold className="w-3 h-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 hover:bg-gray-200"
-          onClick={() => formatText('italic')}
-          title="Italic (Ctrl+I)"
-        >
-          <Italic className="w-3 h-3" />
-        </Button>
-      </div>
-
-      {/* Rich text editor */}
+    <div className="h-full">
+      {/* Rich text editor - no toolbar, just keyboard shortcuts */}
       <div
         ref={editorRef}
         contentEditable
-        className="flex-1 outline-none text-sm leading-relaxed overflow-y-auto"
+        className="h-full outline-none text-sm leading-relaxed overflow-y-auto"
         style={{ 
           minHeight: '100px',
           wordWrap: 'break-word',
