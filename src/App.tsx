@@ -41,18 +41,21 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-screenshot-v1';
+const STORAGE_KEY = 'personaltab-data-screenshot-v2';
 
-// Widget dimensions matching the screenshot exactly
-const WIDGET_WIDTH = 350;
-const WIDGET_HEIGHT = 280;
+// Widget dimensions - NEW DEFAULT SIZE: 280w x 370h
+const WIDGET_WIDTH = 280;
+const WIDGET_HEIGHT = 370;
 const WIDGET_MARGIN = 20;
 const GRID_SIZE = 20;
+
+// Container padding - 20px from edges
+const CONTAINER_PADDING = 20;
 
 // Calculate how many widgets fit per row based on viewport
 const getWidgetsPerRow = () => {
   const viewportWidth = window.innerWidth;
-  const availableWidth = viewportWidth - 80; // Account for padding
+  const availableWidth = viewportWidth - (CONTAINER_PADDING * 2); // Account for left/right padding
   return Math.floor(availableWidth / (WIDGET_WIDTH + WIDGET_MARGIN));
 };
 
@@ -87,8 +90,8 @@ export default function App() {
         type: 'notes' as const,
         title: 'Notes',
         content: { text: 'Welcome to PersonalTab!\n\nDrag widgets to move them.\nResize by dragging corners.\nClick titles to edit them.' },
-        x: 0,
-        y: 0,
+        x: CONTAINER_PADDING, // Start with proper padding from left edge
+        y: CONTAINER_PADDING, // Start with proper padding from top
         width: WIDGET_WIDTH,
         height: WIDGET_HEIGHT,
         zIndex: 1
@@ -98,8 +101,8 @@ export default function App() {
         type: 'links' as const,
         title: 'Links',
         content: { links: [] },
-        x: WIDGET_WIDTH + WIDGET_MARGIN,
-        y: 0,
+        x: CONTAINER_PADDING + WIDGET_WIDTH + WIDGET_MARGIN,
+        y: CONTAINER_PADDING,
         width: WIDGET_WIDTH,
         height: WIDGET_HEIGHT,
         zIndex: 2
@@ -109,8 +112,8 @@ export default function App() {
         type: 'todo' as const,
         title: 'List',
         content: { todos: [] },
-        x: (WIDGET_WIDTH + WIDGET_MARGIN) * 2,
-        y: 0,
+        x: CONTAINER_PADDING + (WIDGET_WIDTH + WIDGET_MARGIN) * 2,
+        y: CONTAINER_PADDING,
         width: WIDGET_WIDTH,
         height: WIDGET_HEIGHT,
         zIndex: 3
@@ -187,10 +190,10 @@ export default function App() {
   // Find next available aligned position for new widget - prioritize second row
   const findNextAlignedPosition = (excludeId?: string): { x: number; y: number } => {
     // First, try the second row (row 1) - this is where new widgets should appear
-    const secondRowY = WIDGET_HEIGHT + WIDGET_MARGIN;
+    const secondRowY = CONTAINER_PADDING + WIDGET_HEIGHT + WIDGET_MARGIN;
     
     for (let col = 0; col < widgetsPerRow; col++) {
-      const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
+      const x = CONTAINER_PADDING + col * (WIDGET_WIDTH + WIDGET_MARGIN);
       
       if (!isPositionOccupied(x, secondRowY, WIDGET_WIDTH, WIDGET_HEIGHT, excludeId)) {
         return { x, y: secondRowY };
@@ -203,8 +206,8 @@ export default function App() {
       if (row === 1) continue;
       
       for (let col = 0; col < widgetsPerRow; col++) {
-        const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
-        const y = row * (WIDGET_HEIGHT + WIDGET_MARGIN);
+        const x = CONTAINER_PADDING + col * (WIDGET_WIDTH + WIDGET_MARGIN);
+        const y = CONTAINER_PADDING + row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
         if (!isPositionOccupied(x, y, WIDGET_WIDTH, WIDGET_HEIGHT, excludeId)) {
           return { x, y };
@@ -214,8 +217,8 @@ export default function App() {
     
     // Fallback: place below all existing widgets
     const positions = getOccupiedPositions(excludeId);
-    const maxY = Math.max(...positions.map(p => p.y + p.height), 0);
-    return { x: 0, y: maxY + WIDGET_MARGIN };
+    const maxY = Math.max(...positions.map(p => p.y + p.height), CONTAINER_PADDING);
+    return { x: CONTAINER_PADDING, y: maxY + WIDGET_MARGIN };
   };
 
   // Find the closest aligned position for a displaced widget
@@ -230,8 +233,8 @@ export default function App() {
     
     for (let row = 0; row <= maxRow; row++) {
       for (let col = 0; col < widgetsPerRow; col++) {
-        const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
-        const y = row * (WIDGET_HEIGHT + WIDGET_MARGIN);
+        const x = CONTAINER_PADDING + col * (WIDGET_WIDTH + WIDGET_MARGIN);
+        const y = CONTAINER_PADDING + row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
         // Check if this position is free
         if (!isPositionOccupied(x, y, WIDGET_WIDTH, WIDGET_HEIGHT, excludeId)) {
@@ -250,8 +253,8 @@ export default function App() {
     }
     
     // Fallback: place below all existing widgets
-    const maxY = Math.max(...positions.map(p => p.y + p.height), 0);
-    return { x: 0, y: maxY + WIDGET_MARGIN };
+    const maxY = Math.max(...positions.map(p => p.y + p.height), CONTAINER_PADDING);
+    return { x: CONTAINER_PADDING, y: maxY + WIDGET_MARGIN };
   };
 
   // Check for widget overlaps during drag
@@ -297,7 +300,7 @@ export default function App() {
     setShowAddMenu(false);
 
     // Scroll to show the new widget if it's in the second row
-    if (position.y === WIDGET_HEIGHT + WIDGET_MARGIN) {
+    if (position.y === CONTAINER_PADDING + WIDGET_HEIGHT + WIDGET_MARGIN) {
       setTimeout(() => {
         const element = document.getElementById(`widget-${newWidget.id}`);
         if (element) {
@@ -347,12 +350,12 @@ export default function App() {
     const rawX = e.clientX - containerRect.left - dragOffset.x;
     const rawY = e.clientY - containerRect.top - dragOffset.y;
     
-    // Calculate maximum X position based on current viewport
+    // Calculate maximum X position based on current viewport with proper padding
     const viewportWidth = window.innerWidth;
-    const maxX = viewportWidth - WIDGET_WIDTH - 40; // Account for padding
+    const maxX = viewportWidth - WIDGET_WIDTH - CONTAINER_PADDING;
     
-    const x = Math.max(0, Math.min(maxX, snapToGrid(rawX)));
-    const y = Math.max(0, snapToGrid(rawY));
+    const x = Math.max(CONTAINER_PADDING, Math.min(maxX, snapToGrid(rawX)));
+    const y = Math.max(CONTAINER_PADDING, snapToGrid(rawY));
     
     // Update drag preview
     setDragPreview({ x, y });
@@ -486,11 +489,15 @@ export default function App() {
 
       <div 
         id="widget-container"
-        className="relative p-4 min-h-screen"
+        className="relative min-h-screen"
         style={{ 
           width: '100%',
           maxWidth: '100vw',
-          overflowX: 'hidden'
+          overflowX: 'hidden',
+          paddingTop: CONTAINER_PADDING,
+          paddingLeft: CONTAINER_PADDING,
+          paddingRight: CONTAINER_PADDING,
+          paddingBottom: CONTAINER_PADDING
         }}
       >
         {widgets.map((widget) => (
@@ -515,8 +522,8 @@ export default function App() {
           <div
             className="absolute border-2 border-blue-400 border-dashed bg-blue-100/30 rounded-xl pointer-events-none"
             style={{
-              left: dragPreview.x,
-              top: dragPreview.y,
+              left: dragPreview.x - CONTAINER_PADDING, // Adjust for container padding
+              top: dragPreview.y - CONTAINER_PADDING,  // Adjust for container padding
               width: widgets.find(w => w.id === draggedWidget)?.width || WIDGET_WIDTH,
               height: widgets.find(w => w.id === draggedWidget)?.height || WIDGET_HEIGHT,
               zIndex: 9999
@@ -620,8 +627,8 @@ function WidgetCard({
         'cursor-grab hover:border-blue-200'
       }`}
       style={{
-        left: widget.x,
-        top: widget.y,
+        left: widget.x - CONTAINER_PADDING, // Adjust for container padding
+        top: widget.y - CONTAINER_PADDING,  // Adjust for container padding
         width: widget.width,
         height: widget.height,
         zIndex: widget.zIndex,
