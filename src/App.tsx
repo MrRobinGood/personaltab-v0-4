@@ -41,7 +41,7 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-fixed-v1';
+const STORAGE_KEY = 'personaltab-data-fixed-v2';
 
 // Fixed dimensions - exactly 380x310 pixels
 const WIDGET_WIDTH = 380;
@@ -145,30 +145,93 @@ export default function App() {
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   };
 
-  // Find next available aligned position for new widget
-  const findNextAlignedPosition = (excludeId?: string): { x: number; y: number } => {
-    const positions = widgets
+  // Get all occupied grid positions
+  const getOccupiedPositions = (excludeId?: string) => {
+    return widgets
       .filter(w => w.id !== excludeId)
-      .map(w => ({ x: w.x, y: w.y, width: w.width, height: w.height }));
+      .map(w => ({
+        x: w.x,
+        y: w.y,
+        width: w.width,
+        height: w.height,
+        id: w.id
+      }));
+  };
+
+  // Check if a position overlaps with any existing widget
+  const isPositionOccupied = (x: number, y: number, width: number, height: number, excludeId?: string) => {
+    const positions = getOccupiedPositions(excludeId);
+    return positions.some(pos => 
+      x < pos.x + pos.width + WIDGET_MARGIN &&
+      x + width + WIDGET_MARGIN > pos.x &&
+      y < pos.y + pos.height + WIDGET_MARGIN &&
+      y + height + WIDGET_MARGIN > pos.y
+    );
+  };
+
+  // Find next available aligned position for new widget - prioritize second row
+  const findNextAlignedPosition = (excludeId?: string): { x: number; y: number } => {
+    // First, try the second row (row 1) - this is where new widgets should appear
+    const secondRowY = WIDGET_HEIGHT + WIDGET_MARGIN;
     
-    // Try positions in a grid pattern with proper alignment
+    for (let col = 0; col < WIDGETS_PER_ROW; col++) {
+      const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
+      
+      if (!isPositionOccupied(x, secondRowY, WIDGET_WIDTH, WIDGET_HEIGHT, excludeId)) {
+        return { x, y: secondRowY };
+      }
+    }
+    
+    // If second row is full, try other rows
     for (let row = 0; row < 10; row++) {
+      // Skip row 1 (second row) as we already checked it
+      if (row === 1) continue;
+      
       for (let col = 0; col < WIDGETS_PER_ROW; col++) {
         const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
         const y = row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
-        // Check if this position overlaps with any existing widget
-        const overlaps = positions.some(pos => 
-          x < pos.x + pos.width + WIDGET_MARGIN &&
-          x + WIDGET_WIDTH + WIDGET_MARGIN > pos.x &&
-          y < pos.y + pos.height + WIDGET_MARGIN &&
-          y + WIDGET_HEIGHT + WIDGET_MARGIN > pos.y
-        );
-        
-        if (!overlaps) {
+        if (!isPositionOccupied(x, y, WIDGET_WIDTH, WIDGET_HEIGHT, excludeId)) {
           return { x, y };
         }
       }
+    }
+    
+    // Fallback: place below all existing widgets
+    const positions = getOccupiedPositions(excludeId);
+    const maxY = Math.max(...positions.map(p => p.y + p.height), 0);
+    return { x: 0, y: maxY + WIDGET_MARGIN };
+  };
+
+  // Find the closest aligned position for a displaced widget
+  const findClosestAlignedPosition = (targetX: number, targetY: number, excludeId?: string): { x: number; y: number } => {
+    const positions = getOccupiedPositions(excludeId);
+    
+    // Generate all possible aligned positions in a reasonable area
+    const possiblePositions: { x: number; y: number; distance: number }[] = [];
+    
+    // Check positions in a grid around the target
+    const maxRow = Math.max(5, Math.ceil((targetY + WIDGET_HEIGHT * 2) / (WIDGET_HEIGHT + WIDGET_MARGIN)));
+    
+    for (let row = 0; row <= maxRow; row++) {
+      for (let col = 0; col < WIDGETS_PER_ROW; col++) {
+        const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
+        const y = row * (WIDGET_HEIGHT + WIDGET_MARGIN);
+        
+        // Check if this position is free
+        if (!isPositionOccupied(x, y, WIDGET_WIDTH, WIDGET_HEIGHT, excludeId)) {
+          // Calculate distance from target position
+          const distance = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
+          possiblePositions.push({ x, y, distance });
+        }
+      }
+    }
+    
+    // Sort by distance and return the closest
+    possiblePositions.sort((a, b) => a.distance - b.distance);
+    
+    if (possiblePositions.length > 0) {
+      return { x: possiblePositions[0].x, y: possiblePositions[0].y };
     }
     
     // Fallback: place below all existing widgets
@@ -217,6 +280,16 @@ export default function App() {
     setNextId(nextId + 1);
     setMaxZIndex(newZIndex);
     setShowAddMenu(false);
+
+    // Scroll to show the new widget if it's in the second row
+    if (position.y === WIDGET_HEIGHT + WIDGET_MARGIN) {
+      setTimeout(() => {
+        const element = document.getElementById(`widget-${newWidget.id}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
   };
 
   const removeWidget = (id: string) => {
@@ -285,7 +358,7 @@ export default function App() {
     const draggedWidgetData = widgets.find(w => w.id === draggedWidget);
     if (!draggedWidgetData) return;
     
-    // Move overlapping widgets to aligned positions
+    // Move overlapping widgets to closest aligned positions
     const overlappingWidgets = getOverlappingWidgets(
       draggedWidget, 
       draggedWidgetData.x, 
@@ -294,10 +367,10 @@ export default function App() {
       draggedWidgetData.height
     );
     
-    // Reposition overlapping widgets to aligned grid positions
+    // Reposition overlapping widgets to closest aligned grid positions
     overlappingWidgets.forEach(widget => {
-      const newPosition = findNextAlignedPosition(widget.id);
-      updateWidget(widget.id, newPosition);
+      const closestPosition = findClosestAlignedPosition(widget.x, widget.y, widget.id);
+      updateWidget(widget.id, closestPosition);
     });
     
     // Clean up drag state
@@ -523,6 +596,7 @@ function WidgetCard({
 
   return (
     <div
+      id={`widget-${widget.id}`}
       className={`absolute bg-white/95 backdrop-blur-sm shadow-lg border-2 rounded-xl transition-all duration-200 ${
         isDragging ? 'cursor-grabbing shadow-2xl scale-105 border-blue-400' : 
         isAffected ? 'border-orange-400 shadow-orange-200 animate-pulse' :
