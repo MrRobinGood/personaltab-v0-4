@@ -41,17 +41,20 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-fixed-v2';
+const STORAGE_KEY = 'personaltab-data-screenshot-v1';
 
-// Fixed dimensions - exactly 380x310 pixels
-const WIDGET_WIDTH = 380;
-const WIDGET_HEIGHT = 310;
+// Widget dimensions matching the screenshot exactly
+const WIDGET_WIDTH = 350;
+const WIDGET_HEIGHT = 280;
 const WIDGET_MARGIN = 20;
-const GRID_SIZE = 20; // Snap to grid for alignment
+const GRID_SIZE = 20;
 
-// Calculate container width to prevent horizontal overflow
-const WIDGETS_PER_ROW = 3;
-const CONTAINER_WIDTH = (WIDGET_WIDTH + WIDGET_MARGIN) * WIDGETS_PER_ROW;
+// Calculate how many widgets fit per row based on viewport
+const getWidgetsPerRow = () => {
+  const viewportWidth = window.innerWidth;
+  const availableWidth = viewportWidth - 80; // Account for padding
+  return Math.floor(availableWidth / (WIDGET_WIDTH + WIDGET_MARGIN));
+};
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -64,6 +67,18 @@ export default function App() {
   const [maxZIndex, setMaxZIndex] = useState(3);
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number } | null>(null);
   const [affectedWidgets, setAffectedWidgets] = useState<string[]>([]);
+  const [widgetsPerRow, setWidgetsPerRow] = useState(3);
+
+  // Update widgets per row on resize
+  useEffect(() => {
+    const updateLayout = () => {
+      setWidgetsPerRow(getWidgetsPerRow());
+    };
+    
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => window.removeEventListener('resize', updateLayout);
+  }, []);
 
   const createDefaultWidgets = (): Widget[] => {
     return [
@@ -80,9 +95,9 @@ export default function App() {
       },
       {
         id: '2',
-        type: 'todo' as const,
-        title: 'List',
-        content: { todos: [] },
+        type: 'links' as const,
+        title: 'Links',
+        content: { links: [] },
         x: WIDGET_WIDTH + WIDGET_MARGIN,
         y: 0,
         width: WIDGET_WIDTH,
@@ -91,9 +106,9 @@ export default function App() {
       },
       {
         id: '3',
-        type: 'links' as const,
-        title: 'Links',
-        content: { links: [] },
+        type: 'todo' as const,
+        title: 'List',
+        content: { todos: [] },
         x: (WIDGET_WIDTH + WIDGET_MARGIN) * 2,
         y: 0,
         width: WIDGET_WIDTH,
@@ -174,7 +189,7 @@ export default function App() {
     // First, try the second row (row 1) - this is where new widgets should appear
     const secondRowY = WIDGET_HEIGHT + WIDGET_MARGIN;
     
-    for (let col = 0; col < WIDGETS_PER_ROW; col++) {
+    for (let col = 0; col < widgetsPerRow; col++) {
       const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
       
       if (!isPositionOccupied(x, secondRowY, WIDGET_WIDTH, WIDGET_HEIGHT, excludeId)) {
@@ -187,7 +202,7 @@ export default function App() {
       // Skip row 1 (second row) as we already checked it
       if (row === 1) continue;
       
-      for (let col = 0; col < WIDGETS_PER_ROW; col++) {
+      for (let col = 0; col < widgetsPerRow; col++) {
         const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
         const y = row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
@@ -214,7 +229,7 @@ export default function App() {
     const maxRow = Math.max(5, Math.ceil((targetY + WIDGET_HEIGHT * 2) / (WIDGET_HEIGHT + WIDGET_MARGIN)));
     
     for (let row = 0; row <= maxRow; row++) {
-      for (let col = 0; col < WIDGETS_PER_ROW; col++) {
+      for (let col = 0; col < widgetsPerRow; col++) {
         const x = col * (WIDGET_WIDTH + WIDGET_MARGIN);
         const y = row * (WIDGET_HEIGHT + WIDGET_MARGIN);
         
@@ -332,8 +347,10 @@ export default function App() {
     const rawX = e.clientX - containerRect.left - dragOffset.x;
     const rawY = e.clientY - containerRect.top - dragOffset.y;
     
-    // Constrain to container bounds
-    const maxX = CONTAINER_WIDTH - WIDGET_WIDTH;
+    // Calculate maximum X position based on current viewport
+    const viewportWidth = window.innerWidth;
+    const maxX = viewportWidth - WIDGET_WIDTH - 40; // Account for padding
+    
     const x = Math.max(0, Math.min(maxX, snapToGrid(rawX)));
     const y = Math.max(0, snapToGrid(rawY));
     
@@ -400,7 +417,7 @@ export default function App() {
         document.body.style.userSelect = '';
       };
     }
-  }, [draggedWidget, dragOffset, widgets]);
+  }, [draggedWidget, dragOffset, widgets, widgetsPerRow]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -469,11 +486,11 @@ export default function App() {
 
       <div 
         id="widget-container"
-        className="relative p-4 overflow-hidden"
+        className="relative p-4 min-h-screen"
         style={{ 
-          minHeight: 'calc(100vh - 80px)', 
-          width: CONTAINER_WIDTH + 40, // Add padding
-          maxWidth: CONTAINER_WIDTH + 40
+          width: '100%',
+          maxWidth: '100vw',
+          overflowX: 'hidden'
         }}
       >
         {widgets.map((widget) => (
