@@ -45,9 +45,14 @@ interface LayoutItem {
   y: number;
   w: number;
   h: number;
+  minW?: number;
+  maxW?: number;
+  minH?: number;
+  maxH?: number;
+  static?: boolean;
 }
 
-const STORAGE_KEY = 'personaltab-data-v14';
+const STORAGE_KEY = 'personaltab-data-v15';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -84,32 +89,45 @@ export default function App() {
       }
     ];
 
-    // Simple, consistent layouts that work with React Grid Layout
+    // Fixed-size layouts that prevent auto-resizing
+    const createLayoutItem = (id: string, x: number, y: number, w: number, h: number): LayoutItem => ({
+      i: id,
+      x,
+      y,
+      w,
+      h,
+      minW: w,  // Minimum width = current width
+      maxW: w,  // Maximum width = current width  
+      minH: h,  // Minimum height = current height
+      maxH: h,  // Maximum height = current height
+      static: false // Allow dragging but prevent resizing
+    });
+
     const defaultLayouts = {
       lg: [
-        { i: '1', x: 0, y: 0, w: 4, h: 12 },
-        { i: '2', x: 4, y: 0, w: 4, h: 12 },
-        { i: '3', x: 8, y: 0, w: 4, h: 12 }
+        createLayoutItem('1', 0, 0, 4, 12),
+        createLayoutItem('2', 4, 0, 4, 12),
+        createLayoutItem('3', 8, 0, 4, 12)
       ],
       md: [
-        { i: '1', x: 0, y: 0, w: 6, h: 12 },
-        { i: '2', x: 6, y: 0, w: 6, h: 12 },
-        { i: '3', x: 0, y: 12, w: 6, h: 12 }
+        createLayoutItem('1', 0, 0, 6, 12),
+        createLayoutItem('2', 6, 0, 6, 12),
+        createLayoutItem('3', 0, 12, 6, 12)
       ],
       sm: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+        createLayoutItem('1', 0, 0, 12, 12),
+        createLayoutItem('2', 0, 12, 12, 12),
+        createLayoutItem('3', 0, 24, 12, 12)
       ],
       xs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+        createLayoutItem('1', 0, 0, 12, 12),
+        createLayoutItem('2', 0, 12, 12, 12),
+        createLayoutItem('3', 0, 24, 12, 12)
       ],
       xxs: [
-        { i: '1', x: 0, y: 0, w: 12, h: 12 },
-        { i: '2', x: 0, y: 12, w: 12, h: 12 },
-        { i: '3', x: 0, y: 24, w: 12, h: 12 }
+        createLayoutItem('1', 0, 0, 12, 12),
+        createLayoutItem('2', 0, 12, 12, 12),
+        createLayoutItem('3', 0, 24, 12, 12)
       ]
     };
 
@@ -171,6 +189,20 @@ export default function App() {
              { todos: [] }
     };
 
+    // Create fixed-size layout item that won't auto-resize
+    const createFixedLayoutItem = (id: string, x: number, y: number, w: number, h: number): LayoutItem => ({
+      i: id,
+      x,
+      y,
+      w,
+      h,
+      minW: w,
+      maxW: w,
+      minH: h,
+      maxH: h,
+      static: false
+    });
+
     // Calculate next position for each breakpoint
     const newLayouts = { ...layouts };
     
@@ -179,16 +211,10 @@ export default function App() {
     const lgCount = lgLayouts.length;
     const lgRow = Math.floor(lgCount / 3);
     const lgCol = lgCount % 3;
-    const lgY = lgRow * 12; // Each widget is 12 units tall
-    const lgX = lgCol * 4;  // Each widget is 4 units wide
+    const lgY = lgRow * 12;
+    const lgX = lgCol * 4;
     
-    newLayouts.lg = [...lgLayouts, {
-      i: String(nextId),
-      x: lgX,
-      y: lgY,
-      w: 4,
-      h: 12
-    }];
+    newLayouts.lg = [...lgLayouts, createFixedLayoutItem(String(nextId), lgX, lgY, 4, 12)];
     
     // For md: 2 widgets per row (6 columns each)
     const mdLayouts = newLayouts.md || [];
@@ -198,26 +224,14 @@ export default function App() {
     const mdY = mdRow * 12;
     const mdX = mdCol * 6;
     
-    newLayouts.md = [...mdLayouts, {
-      i: String(nextId),
-      x: mdX,
-      y: mdY,
-      w: 6,
-      h: 12
-    }];
+    newLayouts.md = [...mdLayouts, createFixedLayoutItem(String(nextId), mdX, mdY, 6, 12)];
     
     // For sm, xs, xxs: 1 widget per row (full width)
     ['sm', 'xs', 'xxs'].forEach(breakpoint => {
       const existingLayouts = newLayouts[breakpoint] || [];
       const count = existingLayouts.length;
       
-      newLayouts[breakpoint] = [...existingLayouts, {
-        i: String(nextId),
-        x: 0,
-        y: count * 12,
-        w: 12,
-        h: 12
-      }];
+      newLayouts[breakpoint] = [...existingLayouts, createFixedLayoutItem(String(nextId), 0, count * 12, 12, 12)];
     });
 
     setWidgets(prev => [...prev, newWidget]);
@@ -267,10 +281,25 @@ export default function App() {
       }
     }
     
-    // Otherwise, keep the new layout
+    // Preserve the original size constraints when updating position
+    const updatedLayout = layout.map(item => {
+      if (item.i === newItem.i) {
+        const originalConstraints = originalLayouts[getCurrentBreakpoint()]?.find(orig => orig.i === item.i);
+        return {
+          ...item,
+          minW: originalConstraints?.minW || item.w,
+          maxW: originalConstraints?.maxW || item.w,
+          minH: originalConstraints?.minH || item.h,
+          maxH: originalConstraints?.maxH || item.h
+        };
+      }
+      return item;
+    });
+    
+    // Keep the new layout with preserved size constraints
     setLayouts(prev => ({
       ...prev,
-      [getCurrentBreakpoint()]: layout
+      [getCurrentBreakpoint()]: updatedLayout
     }));
   };
 
@@ -288,7 +317,26 @@ export default function App() {
   const onLayoutChange = (layout: LayoutItem[], allLayouts: { [key: string]: LayoutItem[] }) => {
     // Only update layouts if we're not dragging, or if this is the final drop
     if (!isDragging) {
-      setLayouts(allLayouts);
+      // Preserve size constraints for all items
+      const preservedLayouts = { ...allLayouts };
+      
+      Object.keys(preservedLayouts).forEach(breakpoint => {
+        preservedLayouts[breakpoint] = preservedLayouts[breakpoint].map(item => {
+          const existingItem = layouts[breakpoint]?.find(existing => existing.i === item.i);
+          if (existingItem) {
+            return {
+              ...item,
+              minW: existingItem.minW || item.w,
+              maxW: existingItem.maxW || item.w,
+              minH: existingItem.minH || item.h,
+              maxH: existingItem.maxH || item.h
+            };
+          }
+          return item;
+        });
+      });
+      
+      setLayouts(preservedLayouts);
     }
   };
 
@@ -370,13 +418,13 @@ export default function App() {
           margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
-          isResizable={true}
-          compactType={null}
+          isResizable={false}  // Disable resizing completely
+          compactType={null}   // Disable compacting
           preventCollision={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
-          autoSize={true}
-          verticalCompact={false}
+          autoSize={false}     // Disable auto-sizing
+          verticalCompact={false}  // Disable vertical compacting
         >
           {widgets.map((widget) => (
             <div key={widget.id}>
