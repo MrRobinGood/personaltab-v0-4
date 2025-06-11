@@ -632,15 +632,15 @@ function WidgetCard({
         transform: isDragging ? 'rotate(2deg)' : 'rotate(0deg)'
       }}
     >
-      {/* Extended drag area - 5px more vertical space */}
+      {/* Drag area - ONLY above the title, increased by 5px vertically */}
       <div 
-        className="absolute top-0 left-0 right-0 h-12 cursor-move"
+        className="absolute top-0 left-0 right-0 h-4 cursor-move rounded-t-xl"
         onMouseDown={(e) => onMouseDown(e, widget.id)}
         style={{ cursor: 'move' }}
       />
 
-      {/* Header - Full width with increased height */}
-      <div className="flex items-center justify-between px-3 py-3 border-b bg-gray-50/50 rounded-t-xl h-12">
+      {/* Header - Increased height by 5px (from h-10 to h-12) */}
+      <div className="flex items-center justify-between px-3 py-3 border-b bg-gray-50/50 rounded-t-xl h-12 mt-1">
         <div className="flex items-center gap-2 flex-1">
           <Menu className="w-3 h-3 text-gray-400" />
           {editingTitle === widget.id ? (
@@ -663,6 +663,7 @@ function WidgetCard({
             <h3
               className="text-sm font-medium cursor-pointer hover:text-blue-600 flex-1 no-drag"
               onClick={startEdit}
+              style={{ cursor: 'pointer' }} // Editing cursor for title
             >
               {widget.title}
             </h3>
@@ -683,7 +684,7 @@ function WidgetCard({
       </div>
 
       {/* Content */}
-      <div className="p-3 overflow-hidden no-drag" style={{ height: widget.height - 60 }}>
+      <div className="p-3 overflow-hidden no-drag" style={{ height: widget.height - 65 }}>
         {widget.type === 'notes' && <NotesWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'todo' && <TodoWidget widget={widget} onUpdate={onUpdate} />}
         {widget.type === 'links' && <LinksWidget widget={widget} onUpdate={onUpdate} />}
