@@ -41,7 +41,7 @@ interface RSSItem {
   image?: string;
 }
 
-const STORAGE_KEY = 'personaltab-data-screenshot-v2';
+const STORAGE_KEY = 'personaltab-data-screenshot-v3';
 
 // Widget dimensions - NEW DEFAULT SIZE: 280w x 370h
 const WIDGET_WIDTH = 280;
@@ -494,10 +494,7 @@ export default function App() {
           width: '100%',
           maxWidth: '100vw',
           overflowX: 'hidden',
-          paddingTop: CONTAINER_PADDING,
-          paddingLeft: CONTAINER_PADDING,
-          paddingRight: CONTAINER_PADDING,
-          paddingBottom: CONTAINER_PADDING
+          padding: CONTAINER_PADDING
         }}
       >
         {widgets.map((widget) => (
@@ -522,8 +519,8 @@ export default function App() {
           <div
             className="absolute border-2 border-blue-400 border-dashed bg-blue-100/30 rounded-xl pointer-events-none"
             style={{
-              left: dragPreview.x - CONTAINER_PADDING, // Adjust for container padding
-              top: dragPreview.y - CONTAINER_PADDING,  // Adjust for container padding
+              left: dragPreview.x,
+              top: dragPreview.y,
               width: widgets.find(w => w.id === draggedWidget)?.width || WIDGET_WIDTH,
               height: widgets.find(w => w.id === draggedWidget)?.height || WIDGET_HEIGHT,
               zIndex: 9999
@@ -627,8 +624,8 @@ function WidgetCard({
         'cursor-grab hover:border-blue-200'
       }`}
       style={{
-        left: widget.x - CONTAINER_PADDING, // Adjust for container padding
-        top: widget.y - CONTAINER_PADDING,  // Adjust for container padding
+        left: widget.x,
+        top: widget.y,
         width: widget.width,
         height: widget.height,
         zIndex: widget.zIndex,
