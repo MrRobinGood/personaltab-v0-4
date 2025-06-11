@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Plus, Menu, X, ExternalLink, Check, Calendar, GripHorizontal } from "lucide-react";
+import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,7 +52,7 @@ interface LayoutItem {
   static?: boolean;
 }
 
-const STORAGE_KEY = 'personaltab-data-v15';
+const STORAGE_KEY = 'personaltab-data-v16';
 
 export default function App() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -61,11 +61,6 @@ export default function App() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
-  
-  // Track original positions to restore them if needed
-  const [originalLayouts, setOriginalLayouts] = useState<{ [key: string]: LayoutItem[] }>({});
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 
   const createDefaultWidgets = (): { widgets: Widget[], layouts: { [key: string]: LayoutItem[] } } => {
     const defaultWidgets = [
@@ -89,18 +84,18 @@ export default function App() {
       }
     ];
 
-    // Fixed-size layouts that prevent auto-resizing
+    // Create layout items with reasonable defaults but no size constraints
     const createLayoutItem = (id: string, x: number, y: number, w: number, h: number): LayoutItem => ({
       i: id,
       x,
       y,
       w,
       h,
-      minW: w,  // Minimum width = current width
-      maxW: w,  // Maximum width = current width  
-      minH: h,  // Minimum height = current height
-      maxH: h,  // Maximum height = current height
-      static: false // Allow dragging but prevent resizing
+      minW: 2,  // Minimum reasonable size
+      maxW: 12, // Maximum reasonable size
+      minH: 4,  // Minimum reasonable height
+      maxH: 20, // Maximum reasonable height
+      static: false
     });
 
     const defaultLayouts = {
@@ -189,17 +184,17 @@ export default function App() {
              { todos: [] }
     };
 
-    // Create fixed-size layout item that won't auto-resize
-    const createFixedLayoutItem = (id: string, x: number, y: number, w: number, h: number): LayoutItem => ({
+    // Create layout item with reasonable defaults
+    const createNewLayoutItem = (id: string, x: number, y: number, w: number, h: number): LayoutItem => ({
       i: id,
       x,
       y,
       w,
       h,
-      minW: w,
-      maxW: w,
-      minH: h,
-      maxH: h,
+      minW: 2,
+      maxW: 12,
+      minH: 4,
+      maxH: 20,
       static: false
     });
 
@@ -214,7 +209,7 @@ export default function App() {
     const lgY = lgRow * 12;
     const lgX = lgCol * 4;
     
-    newLayouts.lg = [...lgLayouts, createFixedLayoutItem(String(nextId), lgX, lgY, 4, 12)];
+    newLayouts.lg = [...lgLayouts, createNewLayoutItem(String(nextId), lgX, lgY, 4, 12)];
     
     // For md: 2 widgets per row (6 columns each)
     const mdLayouts = newLayouts.md || [];
@@ -224,14 +219,14 @@ export default function App() {
     const mdY = mdRow * 12;
     const mdX = mdCol * 6;
     
-    newLayouts.md = [...mdLayouts, createFixedLayoutItem(String(nextId), mdX, mdY, 6, 12)];
+    newLayouts.md = [...mdLayouts, createNewLayoutItem(String(nextId), mdX, mdY, 6, 12)];
     
     // For sm, xs, xxs: 1 widget per row (full width)
     ['sm', 'xs', 'xxs'].forEach(breakpoint => {
       const existingLayouts = newLayouts[breakpoint] || [];
       const count = existingLayouts.length;
       
-      newLayouts[breakpoint] = [...existingLayouts, createFixedLayoutItem(String(nextId), 0, count * 12, 12, 12)];
+      newLayouts[breakpoint] = [...existingLayouts, createNewLayoutItem(String(nextId), 0, count * 12, 12, 12)];
     });
 
     setWidgets(prev => [...prev, newWidget]);
@@ -255,89 +250,8 @@ export default function App() {
     setWidgets(widgets.map(w => w.id === id ? { ...w, ...updates } : w));
   };
 
-  // Handle drag start - save original positions
-  const onDragStart = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
-    setIsDragging(true);
-    setDraggedItemId(oldItem.i);
-    setOriginalLayouts({ ...layouts });
-  };
-
-  // Handle drag stop - decide whether to keep new position or revert
-  const onDragStop = (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => {
-    setIsDragging(false);
-    setDraggedItemId(null);
-    
-    // Check if the item was actually moved to a significantly different position
-    const originalItem = originalLayouts[getCurrentBreakpoint()]?.find(item => item.i === oldItem.i);
-    
-    if (originalItem) {
-      const xDiff = Math.abs(newItem.x - originalItem.x);
-      const yDiff = Math.abs(newItem.y - originalItem.y);
-      
-      // If the movement is minimal (just from hover effects), revert to original position
-      if (xDiff < 2 && yDiff < 2) {
-        setLayouts(originalLayouts);
-        return;
-      }
-    }
-    
-    // Preserve the original size constraints when updating position
-    const updatedLayout = layout.map(item => {
-      if (item.i === newItem.i) {
-        const originalConstraints = originalLayouts[getCurrentBreakpoint()]?.find(orig => orig.i === item.i);
-        return {
-          ...item,
-          minW: originalConstraints?.minW || item.w,
-          maxW: originalConstraints?.maxW || item.w,
-          minH: originalConstraints?.minH || item.h,
-          maxH: originalConstraints?.maxH || item.h
-        };
-      }
-      return item;
-    });
-    
-    // Keep the new layout with preserved size constraints
-    setLayouts(prev => ({
-      ...prev,
-      [getCurrentBreakpoint()]: updatedLayout
-    }));
-  };
-
-  // Get current breakpoint (simplified)
-  const getCurrentBreakpoint = () => {
-    const width = window.innerWidth;
-    if (width >= 1200) return 'lg';
-    if (width >= 996) return 'md';
-    if (width >= 768) return 'sm';
-    if (width >= 480) return 'xs';
-    return 'xxs';
-  };
-
-  // Handle layout changes during drag - be more conservative
   const onLayoutChange = (layout: LayoutItem[], allLayouts: { [key: string]: LayoutItem[] }) => {
-    // Only update layouts if we're not dragging, or if this is the final drop
-    if (!isDragging) {
-      // Preserve size constraints for all items
-      const preservedLayouts = { ...allLayouts };
-      
-      Object.keys(preservedLayouts).forEach(breakpoint => {
-        preservedLayouts[breakpoint] = preservedLayouts[breakpoint].map(item => {
-          const existingItem = layouts[breakpoint]?.find(existing => existing.i === item.i);
-          if (existingItem) {
-            return {
-              ...item,
-              minW: existingItem.minW || item.w,
-              maxW: existingItem.maxW || item.w,
-              minH: existingItem.minH || item.h,
-              maxH: existingItem.maxH || item.h
-            };
-          }
-          return item;
-        });
-      });
-      
-      setLayouts(preservedLayouts);
-    }
+    setLayouts(allLayouts);
   };
 
   return (
@@ -410,21 +324,19 @@ export default function App() {
           className="layout"
           layouts={layouts}
           onLayoutChange={onLayoutChange}
-          onDragStart={onDragStart}
-          onDragStop={onDragStop}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
           rowHeight={30}
           margin={[16, 16]}
           containerPadding={[0, 0]}
           isDraggable={true}
-          isResizable={false}  // Disable resizing completely
-          compactType={null}   // Disable compacting
+          isResizable={true}
+          compactType={null}
           preventCollision={true}
           allowOverlap={false}
           draggableHandle=".drag-handle"
-          autoSize={false}     // Disable auto-sizing
-          verticalCompact={false}  // Disable vertical compacting
+          autoSize={false}
+          verticalCompact={false}
         >
           {widgets.map((widget) => (
             <div key={widget.id}>
@@ -478,14 +390,12 @@ function WidgetCard({
 
   return (
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm shadow-lg border-2 hover:border-blue-200 transition-all">
-      {/* Draggable area above title */}
-      <div className="drag-handle cursor-move bg-gray-50/50 hover:bg-gray-100/70 transition-colors border-b border-gray-100 p-2 flex items-center justify-center group">
-        <GripHorizontal className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-      </div>
-
-      <CardHeader className="flex-shrink-0 pb-2 pt-3">
+      <CardHeader className="flex-shrink-0 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
+            <div className="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
+              <Menu className="w-3 h-3 text-gray-400" />
+            </div>
             {editingTitle === widget.id ? (
               <div className="flex items-center gap-1 flex-1">
                 <Input
