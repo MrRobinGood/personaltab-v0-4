@@ -23,7 +23,7 @@ interface Link {
   id: string;
   url: string;
   title: string;
-  domain: string;
+  favicon?: string;
 }
 
 interface TodoItem {
@@ -57,42 +57,6 @@ const getWidgetsPerRow = () => {
   const viewportWidth = window.innerWidth;
   const availableWidth = viewportWidth - (CONTAINER_PADDING * 2); // Account for left/right padding
   return Math.floor(availableWidth / (WIDGET_WIDTH + WIDGET_MARGIN));
-};
-
-// Function to extract domain from URL and create a simple favicon
-const getDomainInfo = (url: string) => {
-  try {
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname.replace('www.', '');
-    return {
-      domain,
-      letter: domain.charAt(0).toUpperCase(),
-      color: getColorFromDomain(domain)
-    };
-  } catch {
-    return {
-      domain: 'unknown',
-      letter: 'U',
-      color: '#6B7280'
-    };
-  }
-};
-
-// Generate a consistent color based on domain name
-const getColorFromDomain = (domain: string) => {
-  const colors = [
-    '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16',
-    '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
-    '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF',
-    '#EC4899', '#F43F5E'
-  ];
-  
-  let hash = 0;
-  for (let i = 0; i < domain.length; i++) {
-    hash = domain.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  
-  return colors[Math.abs(hash) % colors.length];
 };
 
 export default function App() {
@@ -916,12 +880,11 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
     let url = newUrl.trim();
     if (!url.startsWith('http')) url = `https://${url}`;
 
-    const domainInfo = getDomainInfo(url);
     const newLink: Link = {
       id: String(Date.now()),
       url,
       title: url,
-      domain: domainInfo.domain
+      favicon: `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=16`
     };
 
     const updated = [...links, newLink];
@@ -934,20 +897,6 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
     const updated = links.filter(l => l.id !== id);
     setLinks(updated);
     onUpdate(widget.id, { content: { links: updated } });
-  };
-
-  // Custom favicon component
-  const CustomFavicon = ({ domain }: { domain: string }) => {
-    const domainInfo = getDomainInfo(`https://${domain}`);
-    
-    return (
-      <div 
-        className="w-4 h-4 rounded-sm flex items-center justify-center text-white text-xs font-bold"
-        style={{ backgroundColor: domainInfo.color }}
-      >
-        {domainInfo.letter}
-      </div>
-    );
   };
 
   return (
@@ -968,7 +917,22 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
       <div className="flex-1 overflow-y-auto space-y-1">
         {links.map((link) => (
           <div key={link.id} className="flex items-center gap-2 p-2 rounded bg-gray-50 group">
-            <CustomFavicon domain={link.domain} />
+            <img 
+              src={link.favicon} 
+              alt="" 
+              className="w-4 h-4"
+              onError={(e) => {
+                // Fallback to a generic globe icon if favicon fails to load
+                (e.target as HTMLImageElement).style.display = 'none';
+                const parent = (e.target as HTMLImageElement).parentElement;
+                if (parent && !parent.querySelector('.fallback-icon')) {
+                  const fallbackIcon = document.createElement('div');
+                  fallbackIcon.className = 'fallback-icon w-4 h-4 bg-gray-400 rounded-sm flex items-center justify-center';
+                  fallbackIcon.innerHTML = '<svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clip-rule="evenodd"></path></svg>';
+                  parent.insertBefore(fallbackIcon, parent.firstChild);
+                }
+              }}
+            />
             <a
               href={link.url}
               target="_blank"

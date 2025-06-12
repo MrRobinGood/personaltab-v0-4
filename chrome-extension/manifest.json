@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "PersonalTab",
+  "version": "1.0",
+  "description": "Your personal dashboard with drag & drop widgets",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.google.com/*",
+    "https://api.rss2json.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data: https://www.google.com https://s2.google.com https://api.rss2json.com https://*.googleusercontent.com;"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
