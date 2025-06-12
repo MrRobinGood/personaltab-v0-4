@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Menu, X, ExternalLink, Check, Calendar } from "lucide-react";
+import { Plus, Menu, X, ExternalLink, Check, Calendar, Globe } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ interface Link {
   id: string;
   url: string;
   title: string;
-  favicon?: string;
+  domain: string;
 }
 
 interface TodoItem {
@@ -57,6 +57,42 @@ const getWidgetsPerRow = () => {
   const viewportWidth = window.innerWidth;
   const availableWidth = viewportWidth - (CONTAINER_PADDING * 2); // Account for left/right padding
   return Math.floor(availableWidth / (WIDGET_WIDTH + WIDGET_MARGIN));
+};
+
+// Function to extract domain from URL and create a simple favicon
+const getDomainInfo = (url: string) => {
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.replace('www.', '');
+    return {
+      domain,
+      letter: domain.charAt(0).toUpperCase(),
+      color: getColorFromDomain(domain)
+    };
+  } catch {
+    return {
+      domain: 'unknown',
+      letter: 'U',
+      color: '#6B7280'
+    };
+  }
+};
+
+// Generate a consistent color based on domain name
+const getColorFromDomain = (domain: string) => {
+  const colors = [
+    '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16',
+    '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
+    '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF',
+    '#EC4899', '#F43F5E'
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < domain.length; i++) {
+    hash = domain.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  return colors[Math.abs(hash) % colors.length];
 };
 
 export default function App() {
@@ -880,11 +916,12 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
     let url = newUrl.trim();
     if (!url.startsWith('http')) url = `https://${url}`;
 
+    const domainInfo = getDomainInfo(url);
     const newLink: Link = {
       id: String(Date.now()),
       url,
       title: url,
-      favicon: `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=16`
+      domain: domainInfo.domain
     };
 
     const updated = [...links, newLink];
@@ -897,6 +934,20 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
     const updated = links.filter(l => l.id !== id);
     setLinks(updated);
     onUpdate(widget.id, { content: { links: updated } });
+  };
+
+  // Custom favicon component
+  const CustomFavicon = ({ domain }: { domain: string }) => {
+    const domainInfo = getDomainInfo(`https://${domain}`);
+    
+    return (
+      <div 
+        className="w-4 h-4 rounded-sm flex items-center justify-center text-white text-xs font-bold"
+        style={{ backgroundColor: domainInfo.color }}
+      >
+        {domainInfo.letter}
+      </div>
+    );
   };
 
   return (
@@ -917,7 +968,7 @@ function LinksWidget({ widget, onUpdate }: { widget: Widget; onUpdate: (id: stri
       <div className="flex-1 overflow-y-auto space-y-1">
         {links.map((link) => (
           <div key={link.id} className="flex items-center gap-2 p-2 rounded bg-gray-50 group">
-            <img src={link.favicon} alt="" className="w-4 h-4" />
+            <CustomFavicon domain={link.domain} />
             <a
               href={link.url}
               target="_blank"
